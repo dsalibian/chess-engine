@@ -11,11 +11,14 @@
 */
  
 #include "position.h"
+#include "misc.h"
 
 using namespace std;
 typedef unsigned long long ull;
 
 void init_attacks();
+
+ull relevant_occupancy_mask(int, int, ull);
 
 ull pawn_attacks_mask(int, bool);
 ull night_attacks_mask(int);

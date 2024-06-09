@@ -4,6 +4,29 @@ array<array<ull, 64>, 2> pawn_attacks;
 array<ull, 64> night_attacks;
 array<ull, 64> king_attacks;
 
+const array<int, 64> rook_relevant_bit_count { 
+    12, 11, 11, 11, 11, 11, 11, 12, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    11, 10, 10, 10, 10, 10, 10, 11, 
+    12, 11, 11, 11, 11, 11, 11, 12,
+ };
+
+const array<int, 64> bishop_relevant_bit_count { 
+    6, 5, 5, 5, 5, 5, 5, 6, 
+    5, 5, 5, 5, 5, 5, 5, 5, 
+    5, 5, 7, 7, 7, 7, 5, 5, 
+    5, 5, 7, 9, 9, 7, 5, 5, 
+    5, 5, 7, 9, 9, 7, 5, 5, 
+    5, 5, 7, 7, 7, 7, 5, 5, 
+    5, 5, 5, 5, 5, 5, 5, 5, 
+    6, 5, 5, 5, 5, 5, 5, 6, 
+ };
+ 
+
 void init_attacks() {
     for(int i = 0; i < 64; i++) {
         pawn_attacks[W][i] = pawn_attacks_mask(i, W);
@@ -12,6 +35,19 @@ void init_attacks() {
         night_attacks[i] = night_attacks_mask(i);
         king_attacks[i] = king_attacks_mask(i);
     }
+}
+
+ull relevant_occupancy_mask(int ind, int bit_count, ull attacks_mask) {
+    ull occupancy = 0;
+    
+    for(int i = 0; i < bit_count; i++) {
+        int p = pop_lsb(attacks_mask);
+
+        if( ind & ( 1 << i ) )
+            occupancy |= ( 1ULL << p );
+    }
+
+    return occupancy;
 }
 
 ull pawn_attacks_mask(int pos, bool side) {
@@ -30,6 +66,7 @@ ull pawn_attacks_mask(int pos, bool side) {
 
     return mask;
 }
+
 ull night_attacks_mask(int pos) {
     ull pos_board = 1ULL << pos;
     ull mask = 0;
@@ -45,6 +82,7 @@ ull night_attacks_mask(int pos) {
 
     return mask;
 } 
+
 ull bishop_attacks_mask(int pos) {
     ull mask = 0;
 
@@ -58,6 +96,7 @@ ull bishop_attacks_mask(int pos) {
 
     return mask;
 } 
+
 ull bishop_attacks_mask(int pos, ull block) {
     ull mask = 0;
 
@@ -87,6 +126,7 @@ ull bishop_attacks_mask(int pos, ull block) {
 
     return mask;
 }
+
 ull rook_attacks_mask(int pos) {
     ull mask = 0;
 
@@ -100,6 +140,7 @@ ull rook_attacks_mask(int pos) {
 
     return mask;
 } 
+
 ull rook_attacks_mask(int pos, ull block) {
     ull mask = 0;
 
@@ -129,9 +170,11 @@ ull rook_attacks_mask(int pos, ull block) {
 
     return mask;
 }
+
 ull queen_attacks_mask(int pos) {
     return bishop_attacks_mask(pos) | rook_attacks_mask(pos);
 } 
+
 ull king_attacks_mask(int pos) {
     ull pos_board = 1ULL << pos;
     ull mask = 0;
