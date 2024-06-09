@@ -15,3 +15,12 @@ void print_bitboard(ull board) {
 int get_bit(ull n, int pos) {
     return ( n >> pos ) & 1;
 }
+
+void set_bit(ull& n, int pos, bool bit) {
+    get_bit(n, pos) == bit ? 0 : n ^= ( 1ULL << pos );
+}
+
+int pop_lsb(ull& n) {
+    n &= ~( 1ULL << __builtin_ctzll(n) );
+    return 1;   
+}

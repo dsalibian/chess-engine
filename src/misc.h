@@ -8,5 +8,7 @@ typedef unsigned long long ull;
 
 void print_bitboard(ull);
 int get_bit(ull, int);
+void set_bit(ull&, int, bool);
+int pop_lsb(ull&);
 
 #endif
