@@ -2,19 +2,14 @@
 
 array<array<ull, 64>, 2> pawn_attacks;
 array<ull, 64> night_attacks;
-array<ull, 64> bishop_attacks;
-array<ull, 64> rook_attacks;
-array<ull, 64> queen_attacks;
 array<ull, 64> king_attacks;
 
 void init_attacks() {
     for(int i = 0; i < 64; i++) {
         pawn_attacks[W][i] = pawn_attacks_mask(i, W);
         pawn_attacks[B][i] = pawn_attacks_mask(i, B);
+
         night_attacks[i] = night_attacks_mask(i);
-        bishop_attacks[i] = bishop_attacks_mask(i);
-        rook_attacks[i] = rook_attacks_mask(i);
-        queen_attacks[i] = queen_attacks_mask(i);
         king_attacks[i] = king_attacks_mask(i);
     }
 }
