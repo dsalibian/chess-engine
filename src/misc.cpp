@@ -5,7 +5,7 @@ void print_bitboard(ull board) {
         cout << i + 1 << "   ";
         for(int j = 0; j < 8; j++) {
             int k = 8 * i + j;
-            cout << get_bit(board, k) << " ";
+            cout << ( get_bit(board, k) ? "1" : ".") << " ";
         }
         cout << '\n';
     }
