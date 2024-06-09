@@ -48,5 +48,9 @@ enum Piece {
     b_king,
 };
 
+enum Side {
+    W,
+    B
+};
 
 #endif
