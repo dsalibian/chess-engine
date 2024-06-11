@@ -4,6 +4,12 @@ array<array<ull, 64>, 2> pawn_attacks;
 array<ull, 64> night_attacks;
 array<ull, 64> king_attacks;
 
+array<array<ull, 4096>, 64> rook_attacks;
+array<array<ull, 512>, 64> bishop_attacks;
+
+array<ull, 64> rook_magics;
+array<ull, 64> bishop_magics;
+
 const array<int, 64> rook_relevant_bit_count { 
     12, 11, 11, 11, 11, 11, 11, 12, 
     11, 10, 10, 10, 10, 10, 10, 11, 
@@ -25,7 +31,14 @@ const array<int, 64> bishop_relevant_bit_count {
     5, 5, 5, 5, 5, 5, 5, 5, 
     6, 5, 5, 5, 5, 5, 5, 6, 
  };
- 
+
+ull find_magic(int, int, bool) {
+    
+}
+
+ull transform(ull board, ull magic, int bits) {
+    return ( board * magic ) >> ( 64 - bits );
+}
 
 void init_attacks() {
     for(int i = 0; i < 64; i++) {
@@ -83,7 +96,7 @@ ull night_attacks_mask(int pos) {
     return mask;
 } 
 
-ull bishop_attacks_mask(int pos) {
+ull bishop_relevant_mask(int pos) {
     ull mask = 0;
 
     int file = pos % 8;
@@ -127,7 +140,7 @@ ull bishop_attacks_mask(int pos, ull block) {
     return mask;
 }
 
-ull rook_attacks_mask(int pos) {
+ull rook_relevant_mask(int pos) {
     ull mask = 0;
 
     int file = pos % 8;
@@ -172,7 +185,7 @@ ull rook_attacks_mask(int pos, ull block) {
 }
 
 ull queen_attacks_mask(int pos) {
-    return bishop_attacks_mask(pos) | rook_attacks_mask(pos);
+    return bishop_relevant_mask(pos) | rook_relevant_mask(pos);
 } 
 
 ull king_attacks_mask(int pos) {
