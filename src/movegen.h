@@ -18,9 +18,7 @@ typedef unsigned long long ull;
 
 void init_attacks();
 
-ull find_magic(int, int, bool);
 ull relevant_occupancy_mask(int, int, ull);
-ull transform(ull, ull, int);
 
 ull pawn_attacks_mask(int, bool);
 ull night_attacks_mask(int);
