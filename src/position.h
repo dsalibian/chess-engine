@@ -6,6 +6,7 @@ typedef unsigned long long ull;
 typedef unsigned short ushort;
 
 #define BB(n) ( 1ULL << n )
+#define bit_count(n) __builtin_popcountll(n)
 
 const ull a_file  = 0x0101010101010101ULL;
 const ull b_file  = 0x0202020202020202ULL;
