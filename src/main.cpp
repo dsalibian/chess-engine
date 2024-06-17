@@ -9,5 +9,7 @@ int main() {
     
     print_bitboard(0);   
 
+
+    print_bitboard(100ULL << 25);
     return 0;
 }
