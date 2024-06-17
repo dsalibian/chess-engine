@@ -7,7 +7,7 @@ using namespace std;
 
 int main() {
     
-    
+    print_bitboard(0);   
 
     return 0;
 }
