@@ -26,3 +26,8 @@ int pop_lsb(ull& n) {
     n &= ~( 1ULL << i );
     return i; 
 }
+
+ull BB(int n) {
+    return 1ULL << n;
+}
+
