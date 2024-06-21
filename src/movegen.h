@@ -45,10 +45,14 @@ inline array<array<ull, 512>, 64> bishop_attacks;
 inline array<ull, 64> rook_magics;
 inline array<ull, 64> bishop_magics;
 
+
+
+// precalculate attack tables
 void init_attacks();
 void init_magics();
 ull find_magic(int, bool);
 ull relevant_occupancy_mask(int, int, ull);
+ull get_attacks(int, ull, bool);
 
 ull pawn_attacks_mask(int, bool);
 ull night_attacks_mask(int);

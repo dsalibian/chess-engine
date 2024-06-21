@@ -1,5 +1,4 @@
 #include "movegen.h"
-#include "misc.h"
 
 void init_attacks() {
     init_magics();
@@ -36,6 +35,12 @@ void init_magics() {
         rook_magics[i] = find_magic(i, false);
         bishop_magics[i] = find_magic(i, true);
     }
+}
+
+ull get_attacks(int pos, ull blocks, bool bishop) {
+    if( bishop )
+        return bishop_attacks[pos][f(bishop_magics[pos], blocks, bit_count(bishop_relevant_mask(pos)))];
+    return rook_attacks[pos][f(rook_magics[pos], blocks, bit_count(rook_relevant_mask(pos)))];
 }
 
 std::mt19937_64 eng(chrono::high_resolution_clock::now().time_since_epoch().count());
