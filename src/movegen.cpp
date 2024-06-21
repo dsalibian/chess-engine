@@ -1,24 +1,42 @@
 #include "movegen.h"
 #include "misc.h"
 
-array<array<ull, 64>, 2> pawn_attacks;
-array<ull, 64> night_attacks;
-array<ull, 64> king_attacks;
-
-array<array<ull, 4096>, 64> rook_attacks;
-array<array<ull, 512>, 64> bishop_attacks;
-
 void init_attacks() {
+    init_magics();
     for(int i = 0; i < 64; i++) {
         pawn_attacks[W][i] = pawn_attacks_mask(i, W);
         pawn_attacks[B][i] = pawn_attacks_mask(i, B);
-
         night_attacks[i] = night_attacks_mask(i);
         king_attacks[i] = king_attacks_mask(i);
+
+        ull mask = rook_relevant_mask(i);
+        ull magic = rook_magics[i];
+        int c = bit_count(mask);
+        int u = 1 << c;
+        for(int j = 0; j < u; j++) {
+            ull blocks = relevant_occupancy_mask(j, c, mask);
+            int k = f(magic, blocks, c);
+            rook_attacks[i][k] = rook_attacks_mask(i, blocks);
+        }
+
+        mask = bishop_relevant_mask(i);
+        magic = bishop_magics[i];
+        c = bit_count(mask);
+        u = 1 << c;
+        for(int j = 0; j < u; j++) {
+            ull blocks = relevant_occupancy_mask(j, c, mask);
+            int k = f(magic, blocks, c);
+            bishop_attacks[i][k] = bishop_attacks_mask(i, blocks);
+        }
     }
 }
 
-void init_magics();
+void init_magics() {
+    for(int i = 0; i < 64; i++) {
+        rook_magics[i] = find_magic(i, false);
+        bishop_magics[i] = find_magic(i, true);
+    }
+}
 
 std::mt19937_64 eng(chrono::high_resolution_clock::now().time_since_epoch().count());
 std::uniform_int_distribution<unsigned long long> distr;
@@ -50,11 +68,11 @@ ull find_magic(int pos, bool bishop) {
 
             if( done[k] != moves[i] )
                 goto retry;
+            
         }
         return magic;
     }
 }
-ull relevant_occupancy_mask(int, int, ull);
 
 ull relevant_occupancy_mask(int ind, int bit_count, ull attacks_mask) {
     ull occupancy = 0;

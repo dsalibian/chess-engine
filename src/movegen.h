@@ -4,6 +4,7 @@
 #include <array>
 #include <random>
 #include <chrono> // seed for random number
+                  
 #include "position.h"
 #include "misc.h"
 
@@ -25,7 +26,7 @@ const ull a_file  = 0x0101010101010101ULL;
 const ull b_file  = 0x0202020202020202ULL;
 const ull g_file  = 0x4040404040404040ULL;
 const ull h_file  = 0x8080808080808080ULL;
-const ull ab_file = 0x303030303030303ULL;
+const ull ab_file = 0x0303030303030303ULL;
 const ull gh_file = 0xc0c0c0c0c0c0c0c0ULL;
 
 const ull rank_1  = 0x00000000000000ffULL;
@@ -34,6 +35,15 @@ const ull rank_7  = 0x00ff000000000000ULL;
 const ull rank_8  = 0xff00000000000000ULL;
 const ull rank_12 = 0x000000000000ffffULL;
 const ull rank_78 = 0xffff000000000000ULL;
+
+inline array<array<ull, 64>, 2> pawn_attacks;
+inline array<ull, 64> night_attacks;
+inline array<ull, 64> king_attacks;
+inline array<array<ull, 4096>, 64> rook_attacks;
+inline array<array<ull, 512>, 64> bishop_attacks;
+
+inline array<ull, 64> rook_magics;
+inline array<ull, 64> bishop_magics;
 
 void init_attacks();
 void init_magics();
