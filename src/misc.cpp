@@ -31,3 +31,6 @@ ull BB(int n) {
     return 1ULL << n;
 }
 
+int f(ull n, ull m, int k) {
+    return ( n * m ) >> ( 64 - k );
+}
