@@ -2,7 +2,8 @@
 #define MOVEGEN_H
 
 #include <array>
-
+#include <random>
+#include <chrono> // seed for random number
 #include "position.h"
 #include "misc.h"
 
@@ -34,10 +35,9 @@ const ull rank_8  = 0xff00000000000000ULL;
 const ull rank_12 = 0x000000000000ffffULL;
 const ull rank_78 = 0xffff000000000000ULL;
 
-
-
 void init_attacks();
-
+void init_magics();
+ull find_magic(int, bool);
 ull relevant_occupancy_mask(int, int, ull);
 
 ull pawn_attacks_mask(int, bool);
