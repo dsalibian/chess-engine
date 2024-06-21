@@ -1,4 +1,5 @@
 #include "movegen.h"
+#include "misc.h"
 
 array<array<ull, 64>, 2> pawn_attacks;
 array<ull, 64> night_attacks;
@@ -16,6 +17,44 @@ void init_attacks() {
         king_attacks[i] = king_attacks_mask(i);
     }
 }
+
+void init_magics();
+
+std::mt19937_64 eng(chrono::high_resolution_clock::now().time_since_epoch().count());
+std::uniform_int_distribution<unsigned long long> distr;
+ull find_magic(int pos, bool bishop) {
+    array<ull, 4096> moves, perms, done;
+    
+    ull relevant_mask = bishop ? bishop_relevant_mask(pos) : rook_relevant_mask(pos);
+    int count = bit_count(relevant_mask);
+    int u = 1 << count;
+
+    for(int i = 0; i < u; i++) {
+        perms[i] = relevant_occupancy_mask(i, count, relevant_mask);
+        moves[i] = bishop ? bishop_attacks_mask(pos, perms[i]) : rook_attacks_mask(pos, perms[i]);  
+    }
+
+    for(;;) {
+        retry:
+
+        ull magic = ~( distr(eng) |  distr(eng) | distr(eng) );
+        if( !magic ) continue;
+
+        done.fill(0);
+        
+        for(int i = 0; i < u; i++) {
+            int k = f(perms[i], magic, count);
+
+            if( !done[k] )
+                done[k] = moves[i];
+
+            if( done[k] != moves[i] )
+                goto retry;
+        }
+        return magic;
+    }
+}
+ull relevant_occupancy_mask(int, int, ull);
 
 ull relevant_occupancy_mask(int ind, int bit_count, ull attacks_mask) {
     ull occupancy = 0;
@@ -41,7 +80,6 @@ ull pawn_attacks_mask(int pos, bool side) {
     } else {
         if( pos_board & ~a_file ) mask |= ( pos_board >> 7 );
         if( pos_board & ~h_file ) mask |= ( pos_board >> 9 );
-
     }
 
     return mask;
@@ -83,22 +121,22 @@ ull bishop_attacks_mask(int pos, ull block) {
     int file = pos % 8;
     int rank = pos / 8;
 
-    for(int r = rank + 1, f = file + 1; r < 7 && f < 7; r++, f++) { 
+    for(int r = rank + 1, f = file + 1; r < 8 && f < 8; r++, f++) { 
         mask |= ( 1ULL << ( 8 * r + f ) ); 
         if( block & ( 1ULL << ( 8 * r + f ) ) )
             break;
     }
-    for(int r = rank + 1, f = file - 1; r < 7 && f > 0; r++, f--) { 
+    for(int r = rank + 1, f = file - 1; r < 8 && f > -1; r++, f--) { 
         mask |= ( 1ULL << ( 8 * r + f ) ); 
         if( block & ( 1ULL << ( 8 * r + f ) ) )
             break;
     }
-    for(int r = rank - 1, f = file + 1; r > 0 && f < 7; r--, f++) { 
+    for(int r = rank - 1, f = file + 1; r > -1 && f < 8; r--, f++) { 
         mask |= ( 1ULL << ( 8 * r + f ) ); 
         if( block & ( 1ULL << ( 8 * r + f ) ) )
             break;
     }
-    for(int r = rank - 1, f = file - 1; r > 0 && f > 0; r--, f--) { 
+    for(int r = rank - 1, f = file - 1; r > -1 && f > -1; r--, f--) { 
         mask |= ( 1ULL << ( 8 * r + f ) ); 
         if( block & ( 1ULL << ( 8 * r + f ) ) )
             break;
@@ -127,22 +165,22 @@ ull rook_attacks_mask(int pos, ull block) {
     int file = pos % 8;
     int rank = pos / 8;
 
-    for(int r = rank + 1; r < 7; r++)  {
+    for(int r = rank + 1; r < 8; r++)  {
         mask |= ( 1ULL << ( 8 * r + file )); 
         if( block & ( 1ULL << ( 8 * r + file ) ) )
             break;    
     }
-    for(int r = rank - 1; r > 0; r--)  {
+    for(int r = rank - 1; r > -1; r--)  {
         mask |= ( 1ULL << ( 8 * r + file )); 
         if( block & ( 1ULL << ( 8 * r + file ) ) )
             break;    
     }
-    for(int f = file + 1; f < 7; f++)  {
+    for(int f = file + 1; f < 8; f++)  {
         mask |= ( 1ULL << ( 8 * rank + f )); 
         if( block & ( 1ULL << ( 8 * rank + f ) ) )
             break;    
     }
-    for(int f = file - 1; f > 0; f--)  {
+    for(int f = file - 1; f > -1; f--)  {
         mask |= ( 1ULL << ( 8 * rank + f )); 
         if( block & ( 1ULL << ( 8 * rank + f ) ) )
             break;    
