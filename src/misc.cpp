@@ -23,7 +23,7 @@ void set_bit(ull& n, int pos, bool bit) {
 // return index of lsb and pop lsb
 int pop_lsb(ull& n) {
     int i = __builtin_ctzll(n);
-    n &= ~( 1ULL << i );
+    n &= n - 1;
     return i; 
 }
 
