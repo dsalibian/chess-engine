@@ -1,4 +1,5 @@
 #include "movegen.h"
+#include <chrono>
 
 void init_attacks() {
     init_magics();
@@ -43,7 +44,7 @@ ull get_attacks(int pos, ull blocks, bool bishop) {
     return rook_attacks[pos][f(rook_magics[pos], blocks, bit_count(rook_relevant_mask(pos)))];
 }
 
-std::mt19937_64 eng(chrono::high_resolution_clock::now().time_since_epoch().count());
+std::mt19937_64 eng(chrono::steady_clock::now().time_since_epoch().count());
 std::uniform_int_distribution<unsigned long long> distr;
 ull find_magic(int pos, bool bishop) {
     array<ull, 4096> moves, perms, done;

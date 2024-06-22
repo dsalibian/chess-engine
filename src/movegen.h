@@ -4,13 +4,34 @@
 #include <array>
 #include <random>
 #include <chrono> // seed for random number
-                  
-#include "position.h"
+
 #include "misc.h"
 
 using namespace std;
 typedef unsigned long long ull;
 
+enum Piece {
+    w_pawn,
+    w_night,
+    w_bishop,
+    w_rook,
+    w_queen,
+    w_king,
+
+    b_pawn,
+    b_night,
+    b_bishop,
+    b_rook,
+    b_queen,
+    b_king,
+
+    empty
+};
+
+enum Side {
+    W,
+    B
+};
 enum Squares{ 
     a1, b1, c1, d1, e1, f1, g1, h1, 
     a2, b2, c2, d2, e2, f2, g2, h2, 

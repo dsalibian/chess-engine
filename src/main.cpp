@@ -1,22 +1,16 @@
+#include <chrono>
 #include <iostream>
 
-#include "position.h"
 #include "movegen.h"
+#include "position.h"
+#include "misc.h"
 
 using namespace std;
 
 int main() {
-    print_bitboard( rook_relevant_mask(a5));
 
-    return 0;
-    ull p = rook_relevant_mask(a1);
-    int n = __builtin_popcountll(p);
-    for(int i = 0; i < 100; i++) {
-        ull b = relevant_occupancy_mask(i, n, p);
-        print_bitboard(b);
-    }
-    
 
+    cout << chrono::steady_clock::now().time_since_epoch().count() << endl;;
 
     return 0;
 }
