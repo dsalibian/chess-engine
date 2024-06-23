@@ -2,6 +2,7 @@
 #define MOVEGEN_H
 
 #include <array>
+#include <vector>
 #include <random>
 #include <chrono> // seed for random number
 
@@ -60,8 +61,8 @@ const ull rank_78 = 0xffff000000000000ULL;
 inline array<array<ull, 64>, 2> pawn_attacks;
 inline array<ull, 64> night_attacks;
 inline array<ull, 64> king_attacks;
-inline array<array<ull, 4096>, 64> rook_attacks;
-inline array<array<ull, 512>, 64> bishop_attacks;
+inline array<vector<ull>, 64> rook_attacks;
+inline array<vector<ull>, 64> bishop_attacks;
 
 inline array<ull, 64> rook_magics;
 inline array<ull, 64> bishop_magics;
@@ -73,7 +74,13 @@ void init_attacks();
 void init_magics();
 ull find_magic(int, bool);
 ull relevant_occupancy_mask(int, int, ull);
-ull get_attacks(int, ull, bool);
+
+ull rook_moves(int, ull, ull);
+ull bishop_moves(int, ull, ull);
+ull pawn_moves(int, ull, ull, bool);
+ull night_moves(int, ull);
+ull king_moves(int, ull);
+ull queen_moves(int, ull, ull);
 
 ull pawn_attacks_mask(int, bool);
 ull night_attacks_mask(int);

@@ -1,6 +1,26 @@
 #include "movegen.h"
 #include <chrono>
 
+ull rook_moves(int pos, ull all, ull friendlies) {
+    return rook_attacks[pos][f(rook_magics[pos], all & rook_relevant_mask(pos), bit_count(rook_relevant_mask(pos)))] & ~friendlies;
+}
+
+ull bishop_moves(int pos, ull all, ull friendlies) {
+    return bishop_attacks[pos][f(bishop_magics[pos], all & bishop_relevant_mask(pos), bit_count(bishop_relevant_mask(pos)))] & ~friendlies;
+}
+
+ull night_moves(int pos, ull friendlies) {
+    return night_attacks[pos] & ~friendlies;
+}
+
+ull king_moves(int pos, ull friendlies) {
+    return king_attacks[pos] & ~friendlies;
+}
+
+ull queen_moves(int pos, ull all, ull friendlies) {
+    return rook_moves(pos, all, friendlies) | bishop_moves(pos, all, friendlies);
+}
+
 void init_attacks() {
     init_magics();
     for(int i = 0; i < 64; i++) {
@@ -13,6 +33,7 @@ void init_attacks() {
         ull magic = rook_magics[i];
         int c = bit_count(mask);
         int u = 1 << c;
+        rook_attacks[i] = vector<ull> (u);
         for(int j = 0; j < u; j++) {
             ull blocks = relevant_occupancy_mask(j, c, mask);
             int k = f(magic, blocks, c);
@@ -23,6 +44,7 @@ void init_attacks() {
         magic = bishop_magics[i];
         c = bit_count(mask);
         u = 1 << c;
+        bishop_attacks[i] = vector<ull> (u);
         for(int j = 0; j < u; j++) {
             ull blocks = relevant_occupancy_mask(j, c, mask);
             int k = f(magic, blocks, c);
@@ -38,11 +60,6 @@ void init_magics() {
     }
 }
 
-ull get_attacks(int pos, ull blocks, bool bishop) {
-    if( bishop )
-        return bishop_attacks[pos][f(bishop_magics[pos], blocks, bit_count(bishop_relevant_mask(pos)))];
-    return rook_attacks[pos][f(rook_magics[pos], blocks, bit_count(rook_relevant_mask(pos)))];
-}
 
 std::mt19937_64 eng(chrono::steady_clock::now().time_since_epoch().count());
 std::uniform_int_distribution<unsigned long long> distr;
