@@ -26,21 +26,14 @@ struct Position {
  *       12+ : move code
  */
 struct Move {
-    ushort dat;
-
-    Move(int to, int from, int code) {
-        dat = ( code << 12 ) | ( from << 6 ) | to;
+    int code;
+    ull to;
+    ull from;
+    Move(int code, ull to, ull from) {
+        this -> code = code;
+        this -> to = to;
+        this -> from = from;
     }
-
-    int get_to() { return dat & 0x3F; }
-    ull get_toll() { return BB(get_to()); }
-
-    int get_from() { return ( dat >> 6 ) & 0x3F; }
-    ull get_fromll() { return BB(get_from()); }
-
-    int get_code() { return dat >> 12; }
-    ull get_codell() { return BB(get_code()); }
-
 };
 
 #endif
