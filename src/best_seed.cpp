@@ -1,5 +1,5 @@
-#include "../src/misc.h"
-#include "../src/movegen.h"
+#include "misc.h"
+#include "movegen.h"
 #include <cmath>
 #include <cstdint>
 #include <iostream>
@@ -15,6 +15,53 @@ struct splitmix {
         r = (r ^ (r >> 30)) * 0xbf58476d1ce4e5b9ULL;
         r = (r ^ (r >> 27)) * 0x94d049bb133111ebULL;
         return state;
+    }
+};
+
+struct xorshiro {
+    uint64 state[2];
+    xorshiro(uint64 s0, uint64 s1, int n) {
+        state[0] = s0;
+        state[1] = s1;
+        for(int i = 0; i < n; ++i) jump();
+    }
+    xorshiro(){}
+
+    uint64 rotl(uint64 x, int k) {
+        return (x << k) | (x >> (64 - k));
+    }
+    
+    uint64 next() {
+        const uint64 s0 = state[0];
+        uint64 s1 = state[1];
+        const uint64 result = rotl(s0 + s1, 17) + s0;
+        
+        s1 ^= s0;
+        state[0] = rotl(s0, 49) ^ (s1 << 21);
+        state[1] = rotl(s1, 28);
+
+        return result;
+    }
+
+    uint64 sparse() {
+        return state[0] & state[1] & next();
+    }
+
+    void jump() {
+        constexpr uint64 JUMP[] = { 0x2bd7a6a6e99c2ddcULL, 0x0992ccaf6a6fca05ULL };
+
+        uint64 s0 = 0, s1 = 0;
+        for(unsigned i = 0; i < sizeof JUMP / sizeof *JUMP; i++)
+            for(unsigned b = 0; b < 64; b++) {
+                if (JUMP[i] & 1ULL << b) {
+                    s0 ^= state[0];
+                    s1 ^= state[1];
+                }
+                next();
+            }
+
+        state[0] = s0;
+        state[1] = s1;
     }
 };
 
@@ -79,9 +126,6 @@ struct Searcher {
         atts    = new bitboard[4096];
         tot_its = 0;
 
-        uint64 t = std::chrono::steady_clock::now().time_since_epoch().count();
-        splitmix sm{0x2545F4914F6CDD1DULL * t + (ah_file ^ rank_7)};
-        for(int i = 0; i < 999; ++i) sm.next();
         ran.state[0] = s0;
         ran.state[1] = s1;
         for(int i = 0; i < n; ++i) ran.jump();
@@ -169,12 +213,9 @@ void start_search(int thread_count) {
 
 int main() {
     using namespace std;
-    using namespace chrono;
+
 
     start_search(9);
-
-
-    
 
 
     return 0;

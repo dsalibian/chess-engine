@@ -8,7 +8,7 @@
 
 int t = 0;
 
-Magic::Magic(int pos, bool bsp, xorshiro& ran) {
+Magic::Magic(int pos, bool bsp, xorshift& ran) {
     rmask = movegen::rmask(pos, bsp);
     int bitcount = __builtin_popcountll(rmask);
     int u = 1U << bitcount;
@@ -75,10 +75,7 @@ Magic magics[64][2];
 bitboard patts_tbl[64][2], natts_tbl[64], katts_tbl[64];
 
 void init_atts() {
-    // xorshift ran{0x6dac763efa178176ULL};
-    xorshiro ran{};
-    ran.state[0] = 0x20ad4fde94aa77e7ULL;
-    ran.state[1] = 0x4e967cc443df34a6ULL;
+    xorshift ran{0x6dac763efa178176ULL};
     for(int i = 0; i < 64; ++i) {
         magics[i][0] = Magic(i, 0, ran);
         magics[i][1] = Magic(i, 1, ran);
