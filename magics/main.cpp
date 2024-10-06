@@ -64,7 +64,7 @@ struct splitmix {
     }
 };
 
-std::atomic<int> global_min = INT32_MAX;
+std::atomic<int> global_min{ INT32_MAX };
 
 struct Searcher {
     Tbls*        tbls;
