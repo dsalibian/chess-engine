@@ -31,12 +31,11 @@ bseed: CXXFLAGS += $(OPTFLAGS)
 bseed: best_seed.cpp misc.cpp movegen.cpp 
 	$(CXX) $(CXXFLAGS) $ $^ -o $(BSEED_BIN)
 
+
+
 $(BINARY): $(OBJ_FILES)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-
-obj/best_seed.o: best_seed.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 obj/main.o: main.cpp misc.h movegen.h position.h | obj
 	$(CXX) $(CXXFLAGS) -c $< -o $@
