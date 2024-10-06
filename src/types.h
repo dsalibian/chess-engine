@@ -66,15 +66,63 @@ enum Files_Ranks {
     rank_18 = 0xff000000000000ffULL,
 };
 
-struct xorshift {
-    uint64 state;
-    uint64 next() {
-        state ^= state << 7; 
-        state ^= state >> 9; 
-        return state; 
+// struct xorshift {
+//     uint64 state;
+//     uint64 next() {
+//         state ^= state << 7; 
+//         state ^= state >> 9; 
+//         return state; 
+//     }
+//     uint64 sparse() { 
+//         return state & next() & next(); 
+//     }
+// };
+
+
+struct xorshiro {
+    uint64 state[2];
+    xorshiro(uint64 s0, uint64 s1, int n) {
+        state[0] = s0;
+        state[1] = s1;
+        for(int i = 0; i < n; ++i) jump();
     }
-    uint64 sparse() { 
-        return state & next() & next(); 
+    xorshiro(){}
+
+    uint64 rotl(uint64 x, int k) {
+        return (x << k) | (x >> (64 - k));
+    }
+    
+    uint64 next() {
+        const uint64 s0 = state[0];
+        uint64 s1 = state[1];
+        const uint64 result = rotl(s0 + s1, 17) + s0;
+        
+        s1 ^= s0;
+        state[0] = rotl(s0, 49) ^ (s1 << 21);
+        state[1] = rotl(s1, 28);
+
+        return result;
+    }
+
+    uint64 sparse() {
+        return state[0] & state[1] & next();
+    }
+
+    void jump() {
+        constexpr uint64 JUMP[] = { 0x2bd7a6a6e99c2ddcULL, 0x0992ccaf6a6fca05ULL };
+
+        uint64 s0 = 0, s1 = 0;
+        for(unsigned i = 0; i < sizeof JUMP / sizeof *JUMP; i++)
+            for(unsigned b = 0; b < 64; b++) {
+                if (JUMP[i] & 1ULL << b) {
+                    s0 ^= state[0];
+                    s1 ^= state[1];
+                }
+                next();
+            }
+
+        state[0] = s0;
+        state[1] = s1;
     }
 };
 

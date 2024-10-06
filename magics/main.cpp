@@ -8,6 +8,16 @@
 #include <thread>
 #include <vector>
 
+struct splitmix {
+    uint64 state;
+    uint64 next() {
+        uint64_t r = (state += 0x9e3779b97f4a7c15ULL);
+        r = (r ^ (r >> 30)) * 0xbf58476d1ce4e5b9ULL;
+        r = (r ^ (r >> 27)) * 0x94d049bb133111ebULL;
+        return state;
+    }
+};
+
 enum Rk_Bsp {rook, bishop};
 struct Tbls {
     bitboard**  rmask;
@@ -54,26 +64,16 @@ struct Tbls {
     }
 };
 
-struct splitmix {
-    uint64 state;
-    uint64 next() {
-        uint64_t r = (state += 0x9e3779b97f4a7c15ULL);
-        r = (r ^ (r >> 30)) * 0xbf58476d1ce4e5b9ULL;
-        r = (r ^ (r >> 27)) * 0x94d049bb133111ebULL;
-        return state;
-    }
-};
-
 std::atomic<int> global_min{ INT32_MAX };
 
 struct Searcher {
     Tbls*        tbls;
-    xorshift     ran;
+    xorshiro     ran;
     uint64*      iters;
     bitboard*    atts;
     uint64       tot_its;
     
-    Searcher(Tbls* _tbls) {
+    Searcher(Tbls* _tbls, uint64 s0, uint64 s1, int n) {
         tbls     = _tbls;
         iters   = new uint64[4096]{0};
         atts    = new bitboard[4096];
@@ -82,7 +82,9 @@ struct Searcher {
         uint64 t = std::chrono::steady_clock::now().time_since_epoch().count();
         splitmix sm{0x2545F4914F6CDD1DULL * t + (ah_file ^ rank_7)};
         for(int i = 0; i < 999; ++i) sm.next();
-        ran.state = sm.state;
+        ran.state[0] = s0;
+        ran.state[1] = s1;
+        for(int i = 0; i < n; ++i) ran.jump();
     }
 
     bool valid_magic(int pos, bool bsp, uint64 magic) {
@@ -125,21 +127,21 @@ struct Searcher {
     }
 
     void jnext_ra1() {
-        uint64 prev;
-        do prev = ran.state;
+        uint64 pstate0;
+        uint64 pstate1;
+        do pstate0 = ran.state[0], pstate1 = ran.state[1];
         while ( !valid_magic(0, 0, ran.sparse()) );
-        ran.state = prev;
+        ran.state[0] = pstate0;
+        ran.state[1] = pstate1;
     }
 
     void search() {
         for(;;) {
             jnext_ra1();
-            uint64 seed = ran.state;
+            uint64 s0 = ran.state[0], s1 = ran.state[1];
             int t = find_all(global_min);
-            ran.state = seed;
-            ran.next();
             if( t < global_min ) {
-                std::cout << std::hex << seed << "   " << std::dec << t << " iters\n";
+                std::cout << "s[0]: 0x" << std::hex << s0 << "ULL  s[1]: 0x" << s1 << std::dec << "ULL  " << t << " iters\n";
                 global_min = t;
             }
         }
@@ -149,11 +151,17 @@ struct Searcher {
 void start_search(int thread_count) {
     using std::vector, std::thread;
 
-    Tbls t{};
+    Tbls tbl{};
     vector<thread> v;
 
+    uint64 t = std::chrono::steady_clock::now().time_since_epoch().count();
+    splitmix sm{0x2545F4914F6CDD1DULL * t + (ah_file ^ rank_7)};
+    for(int i = 0; i < 999; ++i) sm.next();
+    uint64 s0 = sm.next();
+    uint64 s1 = sm.next();
+
     for(int i = 0; i < thread_count; ++i) 
-        v.push_back(thread(&Searcher::search, Searcher(&t)));
+        v.push_back(thread(&Searcher::search, Searcher(&tbl, s0, s1, i)));
 
     for(int i = 0; i < thread_count; ++i) 
         v[i].join();
@@ -164,6 +172,10 @@ int main() {
     using namespace chrono;
 
     start_search(10);
+
+
+    
+
 
     return 0;
 }

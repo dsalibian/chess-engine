@@ -10,7 +10,7 @@ struct Magic {
     bitboard* atts;
     bitboard  rmask;
     unsigned  shamt;
-    Magic(int, bool, xorshift&);
+    Magic(int, bool, xorshiro&);
     Magic(){};
     unsigned index(bitboard all) {
         all &= rmask;
