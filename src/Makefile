@@ -26,17 +26,19 @@ pgo:
 
 
 
-$(BINARY): $(OBJ_FILES) 
+$(BINARY): $(OBJ_FILES)
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
-obj/main.o: main.cpp misc.h movegen.h position.h
+obj/main.o: main.cpp misc.h movegen.h position.h | obj
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 obj/movegen.o: misc.h
 
-obj/%.o: %.cpp %.h $(GENERIC)
+obj/%.o: %.cpp %.h $(GENERIC) | obj
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
+obj: 
+	mkdir obj
 
 
 .PHONY: clean
