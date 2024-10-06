@@ -141,7 +141,7 @@ struct Searcher {
             uint64 s0 = ran.state[0], s1 = ran.state[1];
             int t = find_all(global_min);
             if( t < global_min ) {
-                std::cout << "s[0]: 0x" << std::hex << s0 << "ULL  s[1]: 0x" << s1 << std::dec << "ULL  " << t << " iters\n";
+                std::cout << "s[0]: 0x" << std::hex << s0 << "ULL  s[1]: 0x" << s1 << std::dec << "ULL  " << t << " iters" << std::endl;
                 global_min = t;
             }
         }
@@ -171,7 +171,7 @@ int main() {
     using namespace std;
     using namespace chrono;
 
-    start_search(10);
+    start_search(9);
 
 
     
