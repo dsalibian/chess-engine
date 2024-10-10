@@ -6,10 +6,8 @@ OPTFLAGS = -march=native -Ofast -flto -frename-registers -DNDEBUG
 DBGFLAGS = -ggdb
 
 BINARY = engine
-BSEED_BIN = bseed
 
-OBS       = $(patsubst %.cpp, obj/%.o, $(wildcard *.cpp))
-OBJ_FILES = $(filter-out obj/best_seed.o, $(OBS))
+OBJ_FILES = $(patsubst %.cpp, obj/%.o, $(wildcard *.cpp))
 
 GENERIC = types.h Makefile
 
@@ -26,10 +24,6 @@ pgo:
 	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -fprofile-generate $(wildcard *.cpp) -o $(BINARY)
 	./$(BINARY)
 	$(CXX) $(CXXFLAGS) $(OPTFLAGS) -fprofile-use $(wildcard *.cpp) -o $(BINARY)
-
-bseed: CXXFLAGS += $(OPTFLAGS)
-bseed: best_seed.cpp misc.cpp movegen.cpp 
-	$(CXX) $(CXXFLAGS) $ $^ -o $(BSEED_BIN)
 
 
 
@@ -56,7 +50,3 @@ clean:
 .PHONY: cleanpgo
 cleanpgo:
 	rm $(BINARY) *.gcda
-
-.PHONY: cleanbseed
-cleanbseed:
-	rm $(BSEED_BIN)
