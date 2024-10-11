@@ -92,55 +92,6 @@ bitboard satts(int pos, uint64 block, bool bsp) {
     return mask;
 }
 
-bitboard patts(int pos, bool turn) {
-    bitboard mask = 0;
-    constexpr int delta[2] {1, -1};
-    unsigned f = pos % 8;
-    unsigned r = pos / 8 + (turn ? 1 : -1);
-
-    for(int df: delta)
-        if( f + df <= 7 && r <= 7 ) 
-            mask |= 1ULL << (8 * r + f + df);
-
-    return mask;
-}
-
-bitboard natts(int pos) {
-    bitboard mask = 0;
-    constexpr int delta[4] {-2, -1, 1, 2};
-    unsigned f = pos % 8;
-    unsigned r = pos / 8;
-
-    for(int df: delta) {
-        for(int dr: delta) {
-            unsigned file = f + df, rank = r + dr;
-            if( abs(df) == abs(dr) || file > 7 || rank > 7 ) continue;
-            
-            mask |= 1ULL << (8 * rank + file); 
-        }
-    }
-
-    return mask;
-}
-
-bitboard katts(int pos) {
-    bitboard mask = 0;
-    constexpr int delta[4] {-1, 0, 1};
-    unsigned f = pos % 8;
-    unsigned r = pos / 8;
-
-    for(int df: delta) {
-        for(int dr: delta) {
-            unsigned file = f + df, rank = r + dr;
-            if( (!df && !dr) || file > 7 || rank > 7 ) continue;
-            
-            mask |= 1ULL << (8 * rank + file); 
-        }
-    }
-
-    return mask;
-}
-
 } // namespace movegen
 
 
