@@ -20,11 +20,6 @@ int main() {
     cout << dec << t << '\n';
 
 
-    // bitboard t = movegen::rmask(e4, 0);
-
-    for(int i = 0; i < 100; ++i) {
-        print_bb(occ_mask(i, 12, movegen::rmask(0, 0)));
-    }
         
 
     return 0;

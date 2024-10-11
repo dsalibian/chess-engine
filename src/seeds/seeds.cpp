@@ -1,10 +1,12 @@
 #include <cmath>
 #include <cstdint>
-#include <exception>
 #include <iostream>
 #include <atomic>
+#include <pthread.h>
 #include <thread>
 #include <vector>
+#include <mutex>
+#include <chrono>
 
 typedef std::uint64_t uint64;
 typedef std::uint64_t bitboard;
@@ -168,86 +170,6 @@ bitboard occ_mask(unsigned index, int bitcount, bitboard atts) {
 
 } // namespace bits
 
-void print_bb(bitboard bb) {
-    using std::cout;
-
-    for(int r = 7; r >= 0; --r) {
-        cout << ' ' << r + 1 << "   ";
-        for(int f = 0; f <= 7; ++f) 
-            cout << (bits::get_bit(bb, 8 * r + f) ? "1 " : ". ");
-        cout << '\n';
-    }
-    cout << "\n     a b c d e f g h\n\n\n";
-}
-
-
-namespace ran {
-
-namespace splitmix {
-
-uint64 next(uint64* state) {
-    uint64 t = ((*state) += 0x9e3779b97f4a7c15ULL);
-    t = (t ^ (t >> 30)) * 0xbf58476d1ce4e5b9ULL;
-    t = (t ^ (t >> 27)) * 0x94d049bb133111ebULL;
-    return t ^ (t >> 31);
-}
-
-} // namespace splitmix
-
-namespace xorshift {
-
-uint64 next(uint64* state) {
-    (*state) ^= (*state) << 7; 
-    (*state) ^= (*state) >> 9; 
-    return (*state); 
-}
-
-} //namespace xorshift
-
-namespace xorshiro {
-
-uint64 rotl(uint64 x, int k) {
-    return (x << k) | (x >> (64 - k));
-}
-
-uint64 next(uint64* state) {
-    const uint64 s0 = state[0];
-    uint64 s1 = state[1];
-    const uint64 result = rotl(s0 + s1, 17) + s0;
-
-    s1 ^= s0;
-    state[0] = rotl(s0, 49) ^ (s1 << 21);
-    state[1] = rotl(s1, 28);
-
-    return result;
-}
-
-} //namespace xorshiro
-
-namespace mwc {
-// seed with: 
-// 0 < state[2] < MWC_A2 - 1
-
-constexpr __uint128_t MWC_A2 = 0xffa04e67b3c95d86ULL;
-
-uint64 next(uint64* state) {
-    const uint64 result = state[1];
-    const __uint128_t t = MWC_A2 * state[0] + state[2];
-    state[0] = state[1];
-    state[1] = uint64(t);
-    state[2] = uint64(t >> 64);
-    return result;
-}
-
-} // namespace mwc
-
-template <typename func> 
-uint64 sparse(func next, uint64* state) {
-    return next(state) & next(state) & next(state);
-}
-
-} //namespace ran
-
 
 enum Rk_Bsp {rook, bishop};
 struct Tbls {
@@ -296,31 +218,139 @@ struct Tbls {
     }
 };
 
-std::atomic<int> global_min{ INT32_MAX };
+std::mutex m;
 
-template<typename ran_fun>
+namespace ran {
+
+void seed(uint64* state, int size) {
+    for(int i = 0; i < size; ++i) {
+        state[i] = 0;
+        m.lock();
+        for(int j = 0; j < 8; ++j)
+            state[i] |= (random() >> (31 - 8)) << (8 * j);
+        m.unlock();
+    }
+}
+
+// https://en.wikipedia.org/wiki/Xorshift#Example_implementation
+struct xorshift {
+    static constexpr int size = 1;
+    uint64 state[size];
+
+    xorshift() { seed(state, size); }
+
+    uint64 next() {
+        state[0] ^= state[0] << 7; 
+        state[0] ^= state[0] >> 9; 
+        return state[0]; 
+    }
+};
+
+// https://prng.di.unimi.it/xoshiro256plusplus.c
+struct xorshiro {
+    static constexpr int size = 4;
+    uint64 state[size];    
+
+    xorshiro() { seed(state, size); }
+
+    uint64 rotl(uint64 x, int k) {
+        return (x << k) | (x >> (64 - k));
+    }
+
+    uint64 next() {
+        const uint64_t result = rotl(state[0] + state[3], 23) + state[0];
+        const uint64_t t = state[1] << 17;
+        state[2] ^= state[0];
+        state[3] ^= state[1];
+        state[1] ^= state[2];
+        state[0] ^= state[3];
+        state[2] ^= t;
+        state[3] = rotl(state[3], 45);
+
+        return result;
+    }
+};
+
+// https://prng.di.unimi.it/splitmix64.c
+struct splitmix {
+    static constexpr int size = 1;
+    uint64 state[size];
+
+    splitmix() { seed(state, size); }
+
+    uint64 next() {
+        uint64 t = (state[0] += 0x9e3779b97f4a7c15ULL);
+        t = (t ^ (t >> 30)) * 0xbf58476d1ce4e5b9ULL;
+        t = (t ^ (t >> 27)) * 0x94d049bb133111ebULL;
+        return t ^ (t >> 31);
+    }
+};
+
+// https://prng.di.unimi.it/MWC192.c
+struct mwc {
+    static constexpr int size = 3;
+    uint64 state[size];
+
+    mwc() { 
+        seed(state, size - 1); 
+        state[2] = 1; 
+    }
+
+    static constexpr __uint128_t MWC_A2 = 0xffa04e67b3c95d86ULL;
+    uint64 next() {
+        const uint64 result = state[1];
+        const __uint128_t t = MWC_A2 * state[0] + state[2];
+        state[0] = state[1];
+        state[1] = uint64(t);
+        state[2] = uint64(t >> 64);
+        return result;
+    }
+};
+
+// https://github.com/skeeto/prng64-shootout/blob/master/shootout.c
+// https://nullprogram.com/blog/2017/09/21/
+struct pcg {
+    static constexpr int size = 2;
+    uint64 state[size];
+
+    static constexpr uint64_t m  = 0x5851f42d4c957f2dULL;
+    static constexpr uint64_t a0 = 0xd737232eeccdf7edULL;
+    static constexpr uint64_t a1 = 0x8b260b70b8e98891ULL;
+
+    pcg() { seed(state, size); }
+
+    uint64 next() {
+        uint64 p0     = state[0];
+        uint64 p1     = state[1];
+        state[0]      = p0 * m + a0;
+        state[1]      = p1 * m + a1;
+        unsigned x0   = unsigned(((p0 >> 18) ^ p0) >> 27);
+        unsigned x1   = unsigned(((p1 >> 18) ^ p1) >> 27);
+        unsigned r0   = unsigned(p0 >> 59);
+        unsigned r1   = unsigned(p1 >> 59);
+        uint64 high   = (x0 >> r0) | (x0 << ((-r0) & 31U));
+        unsigned low  = (x1 >> r1) | (x1 << ((-r1) & 31U));
+        return (high << 32) | low;
+    }
+};
+
+} // namespace ran
+
+std::atomic<unsigned> global_min{UINT32_MAX};
+
+template<typename Ran>
 struct Searcher {
     Tbls* tbl;
     bitboard* atts;
-    uint64* iters, total_its = 0;
-    ran_fun next;
-
-    uint64* state;
+    unsigned* iters, total_its = 0;
     uint64* pstate;
-    int state_size;
+    Ran ran{};
 
-    Searcher(Tbls* _tbl, ran_fun _next, int _state_size, bool mwc) {
-        tbl = _tbl;
-        next = _next;
-        state_size = _state_size;
-        atts   = new bitboard[1U << 12];
-        iters  = new uint64  [1U << 12];
-
-        state  = new uint64  [_state_size];
-        pstate = new uint64  [_state_size];
-        for(int i = 0; i < _state_size; ++i)
-            state[i] = (random() << 32) | random();
-        if( mwc ) state[2] = 1;
+    Searcher(Tbls* _tbl) {
+        tbl    = _tbl;
+        atts   = new bitboard[4096];
+        iters  = new unsigned[4096];
+        pstate = new uint64[ran.size];
     }
 
     bool valid_magic(int pos, bool bsp, uint64 magic) {
@@ -328,7 +358,7 @@ struct Searcher {
         for(int j = 0; j < tbl->u[pos][bsp]; ++j) {
             unsigned k = unsigned((magic * tbl->perms[pos][bsp][j]) >> tbl->shamt[pos][bsp]);
 
-            if( iters[k] < total_its ) {
+            if( iters[k] != total_its ) {
                 iters[k] = total_its;
                 atts [k] = tbl->moves[pos][bsp][j];
             }
@@ -338,10 +368,14 @@ struct Searcher {
         return true;
     }
 
-    void find_magic(int pos, bool bishop, int& cur_it, int min) {
+    uint64 sparse() {
+        return ran.next() & ran.next() & ran.next();
+    }
+
+    void find_magic(int pos, bool bishop, unsigned& cur_it, unsigned min) {
         uint64 magic;
         for(;; ++cur_it) {
-            do magic = ran::sparse(next, state);
+            do magic = sparse();
             while (!magic);
 
             if( cur_it > min || valid_magic(pos, bishop, magic )) 
@@ -349,8 +383,8 @@ struct Searcher {
         }
     }
 
-    int find_all(int min) {
-        int cur_it = 0;
+    int find_all(unsigned min) {
+        unsigned cur_it = 0;
 
         for(int i = 0; i < 64; ++i) {
             for(int k: {0, 1}) {
@@ -363,26 +397,31 @@ struct Searcher {
         return cur_it;
     }
 
-    void skip() {
-        do {
-            for(int i = 0; i < state_size; ++i)
-                pstate[i] = state[i];
-        }
-        while ( !valid_magic(0, 0, ran::sparse(next, state)) );
+    void write_pstate() {
+        for(int i = 0; i < ran.size; ++i)
+            pstate[i] = ran.state[i];
+    }
 
-        for(int i = 0; i < state_size; ++i)
-            state[i] = pstate[i];
+    void read_pstate() {
+        for(int i = 0; i < ran.size; ++i)
+            ran.state[i] = pstate[i];
+    }
+
+    void jmp() {
+        do write_pstate();
+        while ( !valid_magic(0, 0, sparse()) );
+        read_pstate();
     }
 
     void search() {
         using namespace std;
         for(;;) {
-            skip();
-            int c = find_all(global_min);
+            jmp();
+            unsigned c = find_all(global_min);
             if( c < global_min ) {
                 cout << "seeds: ";
-                for(int i = 0; i < state_size; ++i)
-                    cout << "s[" << dec << i << "] = 0x" << hex << pstate[i] << "ULL ";
+                for(int i = 0; i < ran.size; ++i)
+                    cout << "s[" << dec << i << "] = 0x" << hex << pstate[i] << "   ";
                 cout << "\niters = " << dec << c << endl << endl;
                 global_min = c;
             } 
@@ -391,17 +430,25 @@ struct Searcher {
 };
 
 
+template<typename Ran>
+void start_search(int thread_count) {
+    using std::vector, std::thread;
+    srandom(unsigned(std::chrono::system_clock::now().time_since_epoch().count()));
+
+    Tbls tbl{};
+
+    vector<thread> v;
+    for(int i = 0; i < thread_count; ++i)
+        v.push_back(thread(&Searcher<Ran>::search, Searcher<Ran>(&tbl)));
+
+    for(int i = 0; i < thread_count; ++i)
+        v[i].join();
+}
 
 int main() {
     using namespace std;
-    srandom(time(NULL));
 
-
-    Tbls t{};
-
-    Searcher s0(&t, &ran::xorshift::next, 1, true);
-
-    s0.search();
+    start_search<ran::xorshiro>(2);
 
     return 0;
 }

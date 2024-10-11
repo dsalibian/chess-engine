@@ -3,14 +3,14 @@ CXXFLAGS = -Wall -Wextra -Wshadow -Wdisabled-optimization \
 		   -Wlogical-op -Wconversion -Wcast-qual \
 		   -Wdeprecated -Wundef -pthread -std=gnu++17
 
-CXXFLAGS += -march=native -Ofast -flto -frename-registers -DNDEBUG
+CXXFLAGS += -march=native -Ofast -frename-registers -DNDEBUG
 
-BINARY = seeds
+BINARY = run
 
 
 all: $(BINARY)
 
-$(BINARY): seed.cpp
+$(BINARY): seeds.cpp
 	$(CXX) $(CXXFLAGS) $^ -o $@
 
 
