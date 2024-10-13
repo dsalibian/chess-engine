@@ -270,12 +270,12 @@ struct pcg {
     static constexpr uint128 m = (uint128(2549297995355413924ULL) << 64) | 4865540595714422341ULL;
     static constexpr uint128 a = (uint128(6364136223846793005ULL) << 64) | 1442695040888963407ULL;
 
-    uint64 rotr64(uint64 x, int k) {
+    uint64 rotr64(uint64 x, unsigned k) {
         return (x >> k) | (x << ((-k) & 63));
     }
 
     uint64 rotr128(uint128 x) {
-        return rotr64(uint64(x >> 64) ^ uint64(x), x >> 122);
+        return rotr64(uint64(x >> 64) ^ uint64(x), unsigned(x >> 122));
     }
     
     uint64 next() {
