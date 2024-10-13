@@ -279,7 +279,7 @@ struct pcg {
     }
     
     uint64 next() {
-        uint64 s = (uint128(state[1]) << 64) | state[0];
+        uint128 s = (uint128(state[1]) << 64) | state[0];
         uint128 t = s * m + a;
         state[0] = uint64(t);
         state[1] = uint64(t >> 64);
