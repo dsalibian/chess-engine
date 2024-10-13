@@ -10,6 +10,7 @@
 
 typedef std::uint64_t uint64;
 typedef std::uint64_t bitboard;
+typedef __uint128_t   uint128;
 
 namespace movegen {
 
@@ -173,14 +174,28 @@ std::mutex m;
 
 namespace ran {
 
-void seed(uint64* state, int size) {
-    for(int i = 0; i < size; ++i) {
-        state[i] = 0;
-        m.lock();
-        for(int j = 0; j < 8; ++j)
-            state[i] |= (random() >> (31 - 8)) << (8 * j);
-        m.unlock();
+// https://prng.di.unimi.it/splitmix64.c
+struct splitmix {
+    static constexpr int size = 1;
+    uint64 state[size];
+
+    splitmix(uint64 seed) { state[0] = seed; }
+
+    static uint64 next(uint64* state) {
+        uint64 t = (state[0] += 0x9e3779b97f4a7c15ULL);
+        t = (t ^ (t >> 30)) * 0xbf58476d1ce4e5b9ULL;
+        t = (t ^ (t >> 27)) * 0x94d049bb133111ebULL;
+        return t ^ (t >> 31);
     }
+};
+
+void seed(uint64* state, int size) {
+    uint64 s = random();
+    for(int i = 0; i < 999; ++i) 
+        s = splitmix::next(&s);
+
+    for(int i = 0; i < size; ++i) 
+        state[i] = splitmix::next(&s);
 }
 
 // https://en.wikipedia.org/wiki/Xorshift#Example_implementation
@@ -204,7 +219,7 @@ struct xorshiro {
 
     xorshiro() { seed(state, size); }
 
-    uint64 rotl(uint64 x, int k) {
+    static uint64 rotl(uint64 x, int k) {
         return (x << k) | (x >> (64 - k));
     }
 
@@ -222,21 +237,6 @@ struct xorshiro {
     }
 };
 
-// https://prng.di.unimi.it/splitmix64.c
-struct splitmix {
-    static constexpr int size = 1;
-    uint64 state[size];
-
-    splitmix() { seed(state, size); }
-
-    uint64 next() {
-        uint64 t = (state[0] += 0x9e3779b97f4a7c15ULL);
-        t = (t ^ (t >> 30)) * 0xbf58476d1ce4e5b9ULL;
-        t = (t ^ (t >> 27)) * 0x94d049bb133111ebULL;
-        return t ^ (t >> 31);
-    }
-};
-
 // https://prng.di.unimi.it/MWC192.c
 struct mwc {
     static constexpr int size = 3;
@@ -247,10 +247,11 @@ struct mwc {
         state[2] = 1; 
     }
 
-    static constexpr __uint128_t MWC_A2 = 0xffa04e67b3c95d86ULL;
+    static constexpr uint128 MWC_A2 = 0xffa04e67b3c95d86ULL;
+
     uint64 next() {
         const uint64 result = state[1];
-        const __uint128_t t = MWC_A2 * state[0] + state[2];
+        const uint128 t = MWC_A2 * state[0] + state[2];
         state[0] = state[1];
         state[1] = uint64(t);
         state[2] = uint64(t >> 64);
@@ -258,30 +259,31 @@ struct mwc {
     }
 };
 
-// https://github.com/skeeto/prng64-shootout/blob/master/shootout.c
-// https://nullprogram.com/blog/2017/09/21/
+// https://github.com/imneme/pcg-cpp/blob/master/include/pcg_random.hpp
+// https://github.com/lemire/testingRNG/blob/master/source/pcg64.h#L20
 struct pcg {
-    static constexpr int size = 2;
-    uint64 state[size];
+    static constexpr int size = 2; 
+    uint64 state[2];
+    
+    pcg() { seed(state, 2); };
 
-    static constexpr uint64_t m  = 0x5851f42d4c957f2dULL;
-    static constexpr uint64_t a0 = 0xd737232eeccdf7edULL;
-    static constexpr uint64_t a1 = 0x8b260b70b8e98891ULL;
+    static constexpr uint128 m = (uint128(2549297995355413924ULL) << 64) | 4865540595714422341ULL;
+    static constexpr uint128 a = (uint128(6364136223846793005ULL) << 64) | 1442695040888963407ULL;
 
-    pcg() { seed(state, size); }
+    uint64 rotr64(uint64 x, int k) {
+        return (x >> k) | (x << ((-k) & 63));
+    }
 
+    uint64 rotr128(uint128 x) {
+        return rotr64(uint64(x >> 64) ^ uint64(x), x >> 122);
+    }
+    
     uint64 next() {
-        uint64 p0     = state[0];
-        uint64 p1     = state[1];
-        state[0]      = p0 * m + a0;
-        state[1]      = p1 * m + a1;
-        unsigned x0   = unsigned(((p0 >> 18) ^ p0) >> 27);
-        unsigned x1   = unsigned(((p1 >> 18) ^ p1) >> 27);
-        unsigned r0   = unsigned(p0 >> 59);
-        unsigned r1   = unsigned(p1 >> 59);
-        uint64 high   = (x0 >> r0) | (x0 << ((-r0) & 31U));
-        unsigned low  = (x1 >> r1) | (x1 << ((-r1) & 31U));
-        return (high << 32) | low;
+        uint64 s = (uint128(state[1]) << 64) | state[0];
+        uint128 t = s * m + a;
+        state[0] = uint64(t);
+        state[1] = uint64(t >> 64);
+        return rotr128(t);
     }
 };
 
@@ -299,8 +301,8 @@ struct Searcher {
 
     Searcher(Tbls* _tbl) {
         tbl    = _tbl;
-        atts   = new bitboard[4096];
-        iters  = new unsigned[4096];
+        atts   = new bitboard[1U << 12];
+        iters  = new unsigned[1U << 12];
         pstate = new uint64[ran.size];
     }
 
@@ -384,11 +386,10 @@ struct Searcher {
 template<typename Ran>
 void start_search(int thread_count) {
     using std::vector, std::thread;
-    srandom(unsigned(std::chrono::system_clock::now().time_since_epoch().count()));
 
     Tbls tbl{};
-
     vector<thread> v;
+
     for(int i = 0; i < thread_count; ++i)
         v.push_back(thread(&Searcher<Ran>::search, Searcher<Ran>(&tbl)));
 
@@ -398,8 +399,9 @@ void start_search(int thread_count) {
 
 int main() {
     using namespace std;
+    srandom(unsigned(std::chrono::system_clock::now().time_since_epoch().count()));
 
-    start_search<ran::xorshiro>(2);
+    start_search<ran::pcg>(2);
 
     return 0;
 }
