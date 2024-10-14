@@ -37,15 +37,19 @@ enum Square {
     a8, b8, c8, d8, e8, f8, g8, h8, 
 };
 
+#define sq_bb(file, rank) file##rank##_bb = 1ULL << file##rank,
+#define rank_bbs(rank) sq_bb(a, rank) sq_bb(b, rank) sq_bb(c, rank) sq_bb(d, rank) \
+                       sq_bb(e, rank) sq_bb(f, rank) sq_bb(g, rank) sq_bb(h, rank)
+
 enum Square_BB {
-    a1_bb = 1ULL<< a1, b1_bb = 1ULL << b1, c1_bb = 1ULL << c1, d1_bb = 1ULL << d1, e1_bb = 1ULL << e1, f1_bb = 1ULL << f1, g1_bb = 1ULL << g1, h1_bb = 1ULL << h1,
-    a2_bb = 1ULL<< a2, b2_bb = 1ULL << b2, c2_bb = 1ULL << c2, d2_bb = 1ULL << d2, e2_bb = 1ULL << e2, f2_bb = 1ULL << f2, g2_bb = 1ULL << g2, h2_bb = 1ULL << h2,
-    a3_bb = 1ULL<< a3, b3_bb = 1ULL << b3, c3_bb = 1ULL << c3, d3_bb = 1ULL << d3, e3_bb = 1ULL << e3, f3_bb = 1ULL << f3, g3_bb = 1ULL << g3, h3_bb = 1ULL << h3,
-    a4_bb = 1ULL<< a4, b4_bb = 1ULL << b4, c4_bb = 1ULL << c4, d4_bb = 1ULL << d4, e4_bb = 1ULL << e4, f4_bb = 1ULL << f4, g4_bb = 1ULL << g4, h4_bb = 1ULL << h4,
-    a5_bb = 1ULL<< a5, b5_bb = 1ULL << b5, c5_bb = 1ULL << c5, d5_bb = 1ULL << d5, e5_bb = 1ULL << e5, f5_bb = 1ULL << f5, g5_bb = 1ULL << g5, h5_bb = 1ULL << h5,
-    a6_bb = 1ULL<< a6, b6_bb = 1ULL << b6, c6_bb = 1ULL << c6, d6_bb = 1ULL << d6, e6_bb = 1ULL << e6, f6_bb = 1ULL << f6, g6_bb = 1ULL << g6, h6_bb = 1ULL << h6,
-    a7_bb = 1ULL<< a7, b7_bb = 1ULL << b7, c7_bb = 1ULL << c7, d7_bb = 1ULL << d7, e7_bb = 1ULL << e7, f7_bb = 1ULL << f7, g7_bb = 1ULL << g7, h7_bb = 1ULL << h7,
-    a8_bb = 1ULL<< a8, b8_bb = 1ULL << b8, c8_bb = 1ULL << c8, d8_bb = 1ULL << d8, e8_bb = 1ULL << e8, f8_bb = 1ULL << f8, g8_bb = 1ULL << g8, h8_bb = 1ULL << h8,
+    rank_bbs(1)
+    rank_bbs(2)
+    rank_bbs(3)
+    rank_bbs(4)
+    rank_bbs(5)
+    rank_bbs(6)
+    rank_bbs(7)
+    rank_bbs(8)
 };
 
 enum Files_Ranks {
