@@ -181,7 +181,7 @@ struct splitmix {
 
     splitmix(uint64 seed) { state[0] = seed; }
 
-    static uint64 next(uint64* state) {
+    uint64 next() {
         uint64 t = (state[0] += 0x9e3779b97f4a7c15ULL);
         t = (t ^ (t >> 30)) * 0xbf58476d1ce4e5b9ULL;
         t = (t ^ (t >> 27)) * 0x94d049bb133111ebULL;
@@ -190,12 +190,12 @@ struct splitmix {
 };
 
 void seed(uint64* state, int size) {
-    uint64 s = random();
+    splitmix m(random());
     for(int i = 0; i < 999; ++i) 
-        s = splitmix::next(&s);
+        m.next();
 
     for(int i = 0; i < size; ++i) 
-        state[i] = splitmix::next(&s);
+        state[i] = m.next();
 }
 
 // https://en.wikipedia.org/wiki/Xorshift#Example_implementation
@@ -232,7 +232,6 @@ struct xorshiro {
         state[0] ^= state[3];
         state[2] ^= t;
         state[3] = rotl(state[3], 45);
-
         return result;
     }
 };
