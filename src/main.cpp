@@ -20,7 +20,5 @@ int main() {
     cout << dec << t << '\n';
 
 
-        
-
     return 0;
 }

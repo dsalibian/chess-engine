@@ -5,6 +5,18 @@
 #include "position.h"
 #include "misc.h"
 
+struct xorshift {
+    uint64 state;
+    uint64 next() {
+        state ^= state << 7; 
+        state ^= state >> 9; 
+        return state; 
+    }
+    uint64 sparse() { 
+        return next() & next() & next(); 
+    }
+};
+
 struct Magic {
     uint64    key;
     bitboard* atts;
@@ -23,8 +35,6 @@ struct Magic {
         return atts[i] & ~us;
     }
 };
-
-
 
 namespace movegen {
 

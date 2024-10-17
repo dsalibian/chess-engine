@@ -75,7 +75,7 @@ Magic magics[64][2];
 bitboard patts_tbl[64][2], natts_tbl[64], katts_tbl[64];
 
 void init_atts() {
-    xorshift ran{0x6dac763efa178176ULL};
+    xorshift ran{0x2fe8c7467c13b5fb};
     for(int i = 0; i < 64; ++i) {
         magics[i][0] = Magic(i, 0, ran);
         magics[i][1] = Magic(i, 1, ran);

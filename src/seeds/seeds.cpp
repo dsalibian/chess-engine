@@ -400,7 +400,7 @@ int main() {
     using namespace std;
     srandom(unsigned(std::chrono::system_clock::now().time_since_epoch().count()));
 
-    start_search<ran::pcg>(2);
+    start_search<ran::xorshift>(1);
 
     return 0;
 }

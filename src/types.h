@@ -70,16 +70,4 @@ enum Files_Ranks {
     rank_18 = 0xff000000000000ffULL,
 };
 
-struct xorshift {
-    uint64 state;
-    uint64 next() {
-        state ^= state << 7; 
-        state ^= state >> 9; 
-        return state; 
-    }
-    uint64 sparse() { 
-        return state & next() & next(); 
-    }
-};
-
 #endif
