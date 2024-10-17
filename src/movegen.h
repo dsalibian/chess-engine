@@ -5,36 +5,8 @@
 #include "position.h"
 #include "misc.h"
 
-struct xorshift {
-    uint64 state;
-    uint64 next() {
-        state ^= state << 7; 
-        state ^= state >> 9; 
-        return state; 
-    }
-    uint64 sparse() { 
-        return next() & next() & next(); 
-    }
-};
-
-struct Magic {
-    uint64    key;
-    bitboard* atts;
-    bitboard  rmask;
-    unsigned  shamt;
-    Magic(int, bool, xorshift&);
-    Magic(){};
-    unsigned index(bitboard all) {
-        all &= rmask;
-        unsigned t = unsigned((all * key) >> shamt);
-        assert(t < (1U << (64 - shamt)));
-        return t;
-    }
-    bitboard get_atts(bitboard all, bitboard us) {
-        unsigned i = index(all);
-        return atts[i] & ~us;
-    }
-};
+struct xorshift;
+struct Magic;
 
 namespace movegen {
 
