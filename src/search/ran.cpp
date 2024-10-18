@@ -8,7 +8,7 @@ typedef __uint128_t   uint128;
 
 namespace ran {
 
-splitmix::splitmix(uint64 seed) { state[0] = seed; }
+splitmix::splitmix(uint64 seed) { *state = seed; }
 
  uint64 splitmix::next() {
     uint64 t = (*state += 0x9e3779b97f4a7c15ULL);
