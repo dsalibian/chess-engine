@@ -37,19 +37,19 @@ enum Square {
     a8, b8, c8, d8, e8, f8, g8, h8, 
 };
 
-#define sq_bb(file, rank) file##rank##_bb = 1ULL << file##rank,
-#define rank_bbs(rank) sq_bb(a, rank) sq_bb(b, rank) sq_bb(c, rank) sq_bb(d, rank) \
-                       sq_bb(e, rank) sq_bb(f, rank) sq_bb(g, rank) sq_bb(h, rank)
+#define SQ_BB(file, rank) file##rank##_bb = 1ULL << file##rank,
+#define RANK_BBS(rank) SQ_BB(a, rank) SQ_BB(b, rank) SQ_BB(c, rank) SQ_BB(d, rank) \
+                       SQ_BB(e, rank) SQ_BB(f, rank) SQ_BB(g, rank) SQ_BB(h, rank)
 
 enum Square_BB {
-    rank_bbs(1)
-    rank_bbs(2)
-    rank_bbs(3)
-    rank_bbs(4)
-    rank_bbs(5)
-    rank_bbs(6)
-    rank_bbs(7)
-    rank_bbs(8)
+    RANK_BBS(1)
+    RANK_BBS(2)
+    RANK_BBS(3)
+    RANK_BBS(4)
+    RANK_BBS(5)
+    RANK_BBS(6)
+    RANK_BBS(7)
+    RANK_BBS(8)
 };
 
 enum Files_Ranks {
