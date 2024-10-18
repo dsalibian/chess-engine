@@ -45,8 +45,4 @@ obj:
 
 .PHONY: clean
 clean:
-	rm $(BINARY) obj/*.o
-
-.PHONY: cleanpgo
-cleanpgo:
-	rm $(BINARY) *.gcda
+	rm -f $(BINARY) obj/*.o *.gcda
