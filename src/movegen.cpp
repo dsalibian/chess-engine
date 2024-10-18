@@ -50,7 +50,7 @@ Magic::Magic(int pos, bool bsp, xorshift& ran) {
     int iter[4096]{};
 
     for(int i = 0; i < u; ++i) {
-        perms[i] = occ_mask(i, bitcount, rmask); 
+        perms[i] = bits::occ_mask(i, bitcount, rmask); 
         moves[i] = movegen::satts(pos, perms[i], bsp);
     }
 

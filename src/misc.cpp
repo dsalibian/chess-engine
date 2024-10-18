@@ -2,6 +2,8 @@
 #include <iostream>
 #include <cassert>
 
+namespace bits {
+
 void print_bb(bitboard bb) {
     using std::cout;
 
@@ -40,4 +42,6 @@ bitboard occ_mask(unsigned index, int bitcount, bitboard atts) {
     }
 
     return occ;
+}
+
 }
