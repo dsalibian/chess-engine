@@ -21,9 +21,6 @@ bool get_bit(bitboard, int);
 void pop_lsb(bitboard&);
 bitboard occ_mask(unsigned, int, bitboard);
 
-// https://graphics.stanford.edu/%7Eseander/bithacks.html#NextBitPermutation
-uint64 next_lperm(uint64);
-
 } // namespace bits
 
 
@@ -36,6 +33,7 @@ struct Tbls {
     bitboard*** moves;
 
     Tbls();
+    ~Tbls();
 };
 
 #endif

@@ -8,9 +8,26 @@ typedef __uint128_t   uint128;
 
 namespace ran {
 
-splitmix::splitmix(uint64 seed) { *state = seed; }
+void seed(uint64* state, int size) {
+    splitmix m;
+    for(int i = 0; i < size; ++i) 
+        state[i] = m.next();
+}
 
- uint64 splitmix::next() {
+
+
+splitmix::splitmix() { 
+    using namespace std::chrono;
+    *state = unsigned(system_clock::now().time_since_epoch().count());
+    for(int i = 0; i < 0x999; ++i) 
+        *state = next(*state);
+}
+
+splitmix::splitmix(uint64 seed) { 
+    *state = seed; 
+}
+
+uint64 splitmix::next() {
     uint64 t = (*state += 0x9e3779b97f4a7c15ULL);
     t = (t ^ (t >> 30)) * 0xbf58476d1ce4e5b9ULL;
     t = (t ^ (t >> 27)) * 0x94d049bb133111ebULL;
@@ -26,7 +43,9 @@ uint64 splitmix::next(uint64& state) {
 
 
 
-xorshift::xorshift() { seed(state, size); }
+xorshift::xorshift() { 
+    seed(state, size); 
+}
 
 uint64 xorshift::next() {
     *state ^= *state << 7; 
@@ -36,7 +55,9 @@ uint64 xorshift::next() {
 
 
 
-xorshiro::xorshiro() { seed(state, size); }
+xorshiro::xorshiro() { 
+    seed(state, size); 
+};
 
 uint64 xorshiro::rotl(uint64 x, int k) {
     return (x << k) | (x >> (64 - k));
@@ -57,8 +78,8 @@ uint64 xorshiro::next() {
 
 
 mwc::mwc() { 
-    seed(state, size - 1); 
-    state[2] = 1; 
+    seed(state, size); 
+    state[2] ? (state[2] &= MWC_A2 - 2) : state[2] = 1;
 }
 
 uint64 mwc::next() {
@@ -72,7 +93,9 @@ uint64 mwc::next() {
 
 
 
-pcg::pcg() { seed(state, 2); };
+pcg::pcg() { 
+    seed(state, size); 
+}
 
 uint64 pcg::rotr64(uint64 x, unsigned k) {
     return (x >> k) | (x << ((-k) & 63));
@@ -88,19 +111,6 @@ uint64 pcg::next() {
     state[0] = uint64(t);
     state[1] = uint64(t >> 64);
     return rotr128(t);
-}
-
-
-
-void seed(uint64* state, int size) {
-    using namespace std::chrono;
-    uint64 s = unsigned(system_clock::now().time_since_epoch().count());
-
-    for(int i = 0; i < 0x999; ++i) 
-        splitmix::next(s);
-
-    for(int i = 0; i < size; ++i) 
-        state[i] = splitmix::next(s);
 }
 
 } // namespace ran

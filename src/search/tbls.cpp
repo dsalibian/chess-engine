@@ -103,11 +103,6 @@ bitboard occ_mask(unsigned index, int bitcount, bitboard atts) {
     return occ;
 }
 
-uint64 next_lperm(uint64 v) {
-    uint64 t = v | (v - 1);
-    return (t + 1) | (((~t & -~t) - 1) >> (__builtin_ctzll(v) + 1));
-}
-
 } // namespace bits
 
 
@@ -147,4 +142,28 @@ Tbls::Tbls() {
             }
         }
     }
+}
+
+Tbls::~Tbls() {
+    for(int i = 0; i < 64; ++i) {
+        delete[] rmask[i];
+        delete[] popcnt[i];
+        delete[] u[i];
+        delete[] shamt[i];
+
+        for(int j = 0; j < 2; ++j) {
+            delete[] perms[i][j];
+            delete[] moves[i][j];
+        }
+
+        delete[] perms[i];
+        delete[] moves[i];
+    }
+
+    delete[] rmask;
+    delete[] popcnt;
+    delete[] u;
+    delete[] shamt;
+    delete[] perms;
+    delete[] moves;
 }

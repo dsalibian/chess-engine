@@ -1,6 +1,7 @@
 #include "tbls.h"
 #include "ran.h"
 #include <atomic>
+#include <cstdint>
 #include <initializer_list>
 #include <iostream>
 #include <vector>
@@ -15,7 +16,7 @@ struct Searcher {
     bitboard* atts;
     unsigned* iters, total_its = 0;
     uint64* pstate;
-    Ran ran{};
+    Ran ran;
 
     Searcher(Tbls* _tbl) {
         tbl    = _tbl;
@@ -48,6 +49,7 @@ struct Searcher {
         for(;; ++cur_it) {
             do magic = sparse();
             while (!magic);
+            std::cout << magic << std::endl;
 
             if( cur_it > min || valid_magic(pos, bishop, magic )) 
                 return;

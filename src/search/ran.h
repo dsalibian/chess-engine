@@ -9,11 +9,14 @@ typedef __uint128_t   uint128;
 
 namespace ran {
 
+void seed(uint64*, int);
+
 // https://prng.di.unimi.it/splitmix64.c
 struct splitmix {
     static constexpr int size = 1;
     uint64 state[size];
 
+    splitmix();
     splitmix(uint64);
     uint64 next();
     static uint64 next(uint64&);
@@ -61,8 +64,6 @@ struct pcg {
     uint64 rotr128(uint128); 
     uint64 next();
 };
-
-void seed(uint64*, int);
 
 } // namespace ran
 
