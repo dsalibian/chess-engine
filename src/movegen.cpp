@@ -5,41 +5,31 @@
 #include <cstdio>
 #include <cstdlib>
 
-struct xorshift {
-    uint64 state;
-    uint64 next() {
-        state ^= state << 7; 
-        state ^= state >> 9; 
-        return state; 
-    }
-    uint64 sparse() { 
-        return next() & next() & next(); 
-    }
-};
 
-struct Magic {
-    uint64    key;
-    bitboard* atts;
-    bitboard  rmask;
-    unsigned  shamt;
-    Magic(int, bool, xorshift&);
-    Magic(){};
-    unsigned index(bitboard all) {
-        all &= rmask;
-        unsigned t = unsigned((all * key) >> shamt);
-        assert(t < (1U << (64 - shamt)));
-        return t;
-    }
-    bitboard get_atts(bitboard all, bitboard us) {
-        unsigned i = index(all);
-        return atts[i] & ~us;
-    }
-};
+uint64_t xorshift::next() {
+    state ^= state << 7; 
+    state ^= state >> 9; 
+    return state; 
+}
+uint64_t xorshift::sparse() { 
+    return next() & next() & next(); 
+}
+
+unsigned Magic::index(bitboard all) {
+    all &= rmask;
+    unsigned t = unsigned((all * key) >> shamt);
+    assert(t < (1U << (64 - shamt)));
+    return t;
+}
+bitboard Magic::get_atts(bitboard all, bitboard us) {
+    unsigned i = index(all);
+    return atts[i] & ~us;
+}
 
 int t = 0;
 
-Magic::Magic(int pos, bool bsp, xorshift& ran) {
-    rmask = movegen::rmask(pos, bsp);
+Magic::Magic(int sqr, bool bsp, xorshift& ran) {
+    rmask = movegen::rmask(sqr, bsp);
     int bitcount = __builtin_popcountll(rmask);
     int u = 1U << bitcount;
     shamt = 64 - bitcount;
@@ -51,7 +41,7 @@ Magic::Magic(int pos, bool bsp, xorshift& ran) {
 
     for(int i = 0; i < u; ++i) {
         perms[i] = bits::occ_mask(i, bitcount, rmask); 
-        moves[i] = movegen::satts(pos, perms[i], bsp);
+        moves[i] = movegen::satts(sqr, perms[i], bsp);
     }
 
     for(int i = 1; ; ++i, ++t) {
@@ -117,14 +107,14 @@ void init_atts() {
     }
 }
 
-bitboard ray(int pos, int d, bitboard block) {
+bitboard ray(int sqr, int d, bitboard block) {
     bitboard bb = 0;
 
     const int df = dir_delta[d][0];
     const int dr = dir_delta[d][1];
 
-    unsigned f = (pos % 8) + df;
-    unsigned r = (pos / 8) + dr;
+    unsigned f = (sqr % 8) + df;
+    unsigned r = (sqr / 8) + dr;
     for( ; f <= 7 && r <= 7; f += df, r += dr) {
         bitboard t = 1ULL << (8 * r + f);
         bb |= t;
@@ -134,33 +124,33 @@ bitboard ray(int pos, int d, bitboard block) {
     return bb;
 }
 
-bitboard rmask(int pos, bool bsp) {
+bitboard rmask(int sqr, bool bsp) {
     bitboard mask = 0;
     constexpr bitboard r_bounds[4] {~rank_8, ~h_file, ~rank_1, ~a_file};
     constexpr bitboard b_bounds = ~(ah_file | rank_18);
     int offs = bsp ? 4: 0;
 
     for(int dir = north + offs; dir <= west + offs; ++dir)
-        mask |= ray(pos, dir, 0) & (bsp ? b_bounds : r_bounds[dir]);
+        mask |= ray(sqr, dir, 0) & (bsp ? b_bounds : r_bounds[dir]);
 
     return mask;
 }
 
-bitboard satts(int pos, uint64 block, bool bsp) {
+bitboard satts(int sqr, uint64_t block, bool bsp) {
     bitboard mask = 0;
     int offs = bsp ? 4 : 0;
 
     for(int dir = north + offs; dir <= west + offs; ++dir)
-        mask |= ray(pos, dir, block);
+        mask |= ray(sqr, dir, block);
 
     return mask;
 }
 
-bitboard patts(int pos, bool turn) {
+bitboard patts(int sqr, bool turn) {
     bitboard mask = 0;
     constexpr int delta[2] {1, -1};
-    unsigned f = pos % 8;
-    unsigned r = pos / 8 + (turn ? 1 : -1);
+    unsigned f = sqr % 8;
+    unsigned r = sqr / 8 + (turn ? 1 : -1);
 
     for(int df: delta)
         if( f + df <= 7 && r <= 7 ) 
@@ -169,11 +159,11 @@ bitboard patts(int pos, bool turn) {
     return mask;
 }
 
-bitboard natts(int pos) {
+bitboard natts(int sqr) {
     bitboard mask = 0;
     constexpr int delta[4] {-2, -1, 1, 2};
-    unsigned f = pos % 8;
-    unsigned r = pos / 8;
+    unsigned f = sqr % 8;
+    unsigned r = sqr / 8;
 
     for(int df: delta) {
         for(int dr: delta) {
@@ -187,11 +177,11 @@ bitboard natts(int pos) {
     return mask;
 }
 
-bitboard katts(int pos) {
+bitboard katts(int sqr) {
     bitboard mask = 0;
     constexpr int delta[4] {-1, 0, 1};
-    unsigned f = pos % 8;
-    unsigned r = pos / 8;
+    unsigned f = sqr % 8;
+    unsigned r = sqr / 8;
 
     for(int df: delta) {
         for(int dr: delta) {

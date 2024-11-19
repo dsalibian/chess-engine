@@ -5,8 +5,23 @@
 #include "position.h"
 #include "misc.h"
 
-struct xorshift;
-struct Magic;
+struct xorshift {
+    uint64_t state;
+    uint64_t next();
+    uint64_t sparse();
+};
+
+struct Magic {
+    uint64_t  key;
+    bitboard* atts;
+    bitboard  rmask;
+    unsigned  shamt;
+
+    Magic(int, bool, xorshift&);
+    Magic(){};
+    unsigned index(bitboard);
+    bitboard get_atts(bitboard, bitboard);
+};
 
 namespace movegen {
 

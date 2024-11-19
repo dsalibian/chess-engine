@@ -5,8 +5,8 @@
 #include <cstdint>
 #include <array>
 
-typedef uint64_t uint64;
-typedef uint64_t bitboard;
+using std::uint64_t;
+using bitboard = std::uint64_t;
 
 enum Occupancy {
     w_pawn,
