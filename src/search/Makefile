@@ -15,4 +15,4 @@ perf: CXXFLAGS += $(OPTFLAGS)
 perf: all
 
 clean:
-	rm -f $(BIN)
+	rm -f $(BIN) *.gcda

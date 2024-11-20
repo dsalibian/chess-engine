@@ -7,12 +7,50 @@
 #include <atomic>
 #include <mutex>
 #include <csignal>
+#include <shared_mutex>
 #include <thread>
 #include <filesystem>
 #include <fstream>
+#include <string>
 
 using std::uint64_t;
 using bitboard = std::uint64_t;
+
+
+
+
+namespace glbl {
+    std::mutex cout_mutex;
+    std::atomic<bool> fexit{false};
+}
+
+void handle_sigint(int signal) {
+    std::cout << "\nsigint signal " << signal << " received...\n\n";
+    glbl::fexit.store(true, std::memory_order_relaxed);
+}
+
+bool fexit() {
+    return glbl::fexit.load(std::memory_order_relaxed);
+}
+
+
+
+
+namespace timing {
+using namespace std::chrono;
+
+auto current_time() {
+    return steady_clock::now();
+}
+
+auto elapsed(steady_clock::time_point t0) {
+    return duration_cast<milliseconds>(steady_clock::now() - t0).count();
+}
+
+} // namespace timing
+
+
+
 
 namespace movegen {
 
@@ -89,6 +127,9 @@ bitboard satts(int sqr, uint64_t block, bool bsp) {
 
 } // namespace movegen
 
+
+
+
 namespace bits {
 
 bool get_bit(bitboard bb, int k) {
@@ -125,45 +166,66 @@ bitboard occ_mask(unsigned index, int bitcount, bitboard atts) {
     return occ;
 }
 
+constexpr __uint128_t init_u128(uint64_t hi, uint64_t lo) {
+    return (__uint128_t(hi) << 64) | lo;
+}
+
+std::string u128_tostring(__uint128_t n) {
+    if(!n)
+        return "0";
+
+    std::string s{""};
+    while(n) {
+        s = char('0' + (n % 10)) + s;
+        n /= 10;
+    }
+
+    return s;
+}
+
+std::string u128_tostring16(__uint128_t n) {
+    if(!n)
+        return "0"; 
+
+    std::string str{""};
+    int i = 0;
+    while(n) {
+        if(i++ == 16) 
+            str = ' ' + str;
+
+        int k = n % 16;
+        str = char(k > 9 ? 'a' + (k - 10) : '0' + k) + str;
+
+        n /= 16;
+    }
+
+    return str;
+}
+
 } // namespace bits
 
 
+
+namespace seqs{
+
 namespace ran {
-
-struct PRNG {
-    virtual uint64_t next() = 0;  
-    virtual uint64_t sparse() final {
-        return next() & next() & next();
-    }
-};
-
+    
 // https://prng.di.unimi.it/splitmix64.c
-struct splitmix: PRNG {
+struct splitmix {
     static constexpr int size = 1;
     uint64_t state[size];
 
     splitmix() { 
-        *state = unsigned(std::chrono::system_clock::now().time_since_epoch().count());
-        for(int i = 0; i < 0x999; ++i) 
-            next(*state);
+        *state = uint64_t(std::chrono::system_clock::now().time_since_epoch().count());
+        for(int i = 0; i < 0x999999; ++i) 
+            *state = this->next();
     }
 
-    splitmix(uint64_t seed) { 
-        *state = seed; 
-    }
-
-    uint64_t next() override {
+    uint64_t next() {
         uint64_t t = (*state += 0x9e3779b97f4a7c15ULL);
         t = (t ^ (t >> 30)) * 0xbf58476d1ce4e5b9ULL;
         t = (t ^ (t >> 27)) * 0x94d049bb133111ebULL;
         return t ^ (t >> 31);
-    }
-
-    static void next(uint64_t& state) {
-        state += 0x9e3779b97f4a7c15ULL;
-        state = (state ^ (state >> 30)) * 0xbf58476d1ce4e5b9ULL;
-        state = (state ^ (state >> 27)) * 0x94d049bb133111ebULL;
-        state ^= (state >> 31);
     }
 };
 
@@ -173,155 +235,156 @@ void seed(uint64_t* state, int size) {
         state[i] = m.next();
 }
 
-// https://en.wikipedia.org/wiki/Xorshift#Example_implementation
-struct xorshift: PRNG {
-    static constexpr int size = 1;
+// https://prng.di.unimi.it/xoshiro512plusplus.c
+struct xorshiro {
+    static constexpr int size = 8;
     uint64_t state[size];
-
-    xorshift() { 
-        seed(state, size); 
-    }
-
-    uint64_t next() override {
-        *state ^= *state << 7; 
-        *state ^= *state >> 9; 
-        return *state;
-    }
-};
-
-// https://prng.di.unimi.it/xoshiro256plusplus.c
-struct xorshiro: PRNG {
-    static constexpr int size = 4;
-    uint64_t state[size];    
 
     xorshiro() { 
         seed(state, size); 
     };
 
-    uint64_t rotl(uint64_t x, int k) {
-        return (x << k) | (x >> (64 - k));
-    }
+    uint64_t next() {
+        uint64_t result = xorshiro_rotl(state[0] + state[2], 17) + state[2];
+        uint64_t t = state[1] << 11;
 
-    uint64_t next() override {
-        const uint64_t result = rotl(state[0] + state[3], 23) + state[0];
-        const uint64_t t = state[1] << 17;
         state[2] ^= state[0];
-        state[3] ^= state[1];
+        state[5] ^= state[1];
         state[1] ^= state[2];
-        state[0] ^= state[3];
-        state[2] ^= t;
-        state[3] = rotl(state[3], 45);
+        state[7] ^= state[3];
+        state[3] ^= state[4];
+        state[4] ^= state[5];
+        state[0] ^= state[6];
+        state[6] ^= state[7];
+        state[6] ^= t;
+        state[7] = xorshiro_rotl(state[7], 21);
+
         return result;
     }
-};
 
-// https://prng.di.unimi.it/MWC192.c
-struct mwc: PRNG {
-    static constexpr int size = 3;
-    static constexpr __uint128_t MWC_A2 = 0xffa04e67b3c95d86ULL;
-    uint64_t state[size];
-
-    mwc() { 
-        seed(state, size); 
-        state[2] ? (state[2] &= MWC_A2 - 2) : state[2] = 1;
-    }
-
-    uint64_t next() override {
-        const uint64_t result = state[1];
-        const __uint128_t t = MWC_A2 * state[0] + state[2];
-        state[0] = state[1];
-        state[1] = uint64_t(t);
-        state[2] = uint64_t(t >> 64);
-        return result;
+    uint64_t xorshiro_rotl(uint64_t x, int k) {
+        return (x << k) | (x >> (64 - k));
     }
 };
 
 // https://github.com/imneme/pcg-cpp/blob/master/include/pcg_random.hpp
-// https://github.com/lemire/testingRNG/blob/master/source/pcg64.h#L20
-struct pcg: PRNG {
-    static constexpr int size = 2; 
-    static constexpr __uint128_t m = (__uint128_t(2549297995355413924ULL) << 64) | 4865540595714422341ULL;
-    static constexpr __uint128_t a = (__uint128_t(6364136223846793005ULL) << 64) | 1442695040888963407ULL;
-    uint64_t state[2];
+// https://github.com/lemire/testingRNG/blob/master/source/pcg64.h
+struct pcg {
+    static constexpr int size = 2;
+    static constexpr __uint128_t MULT = bits::init_u128(0x2360ed051fc65da4ULL, 0x4385df649fccf645ULL); 
+    static constexpr __uint128_t INC  = bits::init_u128(0x5851f42d4c957f2dULL, 0x14057b7ef767814fULL); 
+    uint64_t state[size];
 
     pcg() { 
         seed(state, size); 
     }
 
-    uint64_t rotr64(uint64_t x, unsigned k) {
+    uint64_t next() {
+        enum {hi, lo};
+
+        __uint128_t s = bits::init_u128(state[hi], state[lo]);
+        __uint128_t t = s * MULT + INC;
+
+        state[hi] = uint64_t(t >> 64);
+        state[lo] = uint64_t(t);
+
+        return rotr(state[hi] ^ state[lo], unsigned(t >> 122));
+    }
+
+    uint64_t rotr(uint64_t x, unsigned k) {
         return (x >> k) | (x << ((-k) & 63));
     }
 
-    uint64_t rotr128(__uint128_t x) {
-        return rotr64(uint64_t(x >> 64) ^ uint64_t(x), unsigned(x >> 122));
-    }
-
-    uint64_t next() override {
-        __uint128_t s = (__uint128_t(state[1]) << 64) | state[0];
-        __uint128_t t = s * m + a;
-        state[0] = uint64_t(t);
-        state[1] = uint64_t(t >> 64);
-        return rotr128(t);
-    }
 };
 
 } // namespace ran
 
-namespace glbl {
-    std::atomic<bool> fexit{false};
-    std::mutex cout_mutex; 
-}
+struct LPerm {
+    unsigned popcnt;
+    uint64_t state;
+    __uint128_t cur_iter, max_iter;
 
-bool read_fexit() {
-    return glbl::fexit.load(std::memory_order_relaxed);
-}
+    LPerm(unsigned _popcnt) { init(_popcnt); }
 
-void handle_sigint(int signal) {
-    std::cout << "\nsigint signal " << signal << " received...\n\n";
-    glbl::fexit.store(true, std::memory_order_relaxed);
-    // std::exit(0);
-}
+    void init(unsigned _popcnt) {
+        popcnt = _popcnt;
+        cur_iter = 0;
+        max_iter = nC(64, popcnt);
+
+        state = 0;
+        for(unsigned i = 0; i < popcnt; ++i)
+            state |= 1ULL << i;
+    }
+
+    // https://graphics.stanford.edu/%7Eseander/bithacks.html#NextBitPermutation
+    uint64_t next() {
+        ++cur_iter;
+        uint64_t t = state | (state - 1);
+        state = (t + 1) | (((~t & -~t) - 1) >> (__builtin_ctzll(state) + 1));
+        return state;
+    }
+
+    long double progress() {
+        return (long double)((long double)cur_iter / (long double)max_iter * 100); // make the compiler shutup
+    }
+
+    static constexpr __uint128_t nC(unsigned n, unsigned k) {
+        if( !k ) return 1;
+        return nC(n - 1, k - 1) * n / k;
+    }
+};
+
+} // namespace seqs
+
+
 
 struct Tbls {
-    bitboard**  rmask;
-    int**       popcnt;
-    int**       shamt;
-    int**       u;
-    bitboard*** perms;
-    bitboard*** moves;
+    const bitboard**  rmask;
+    const unsigned**  popcnt;
+    const unsigned**  shamt;
+    const unsigned**  u;
+    const bitboard*** perms;
+    const bitboard*** moves;
 
     Tbls() {
-        rmask  = new bitboard*[64];
-        popcnt = new int*[64];
-        u      = new int*[64];
-        shamt  = new int*[64];
-        perms  = new bitboard**[64];
-        moves  = new bitboard**[64];
+        bitboard** _rmask  = new bitboard*[64];
+        unsigned** _popcnt = new unsigned*[64];
+        unsigned** _u      = new unsigned*[64];
+        unsigned** _shamt  = new unsigned*[64];
+        bitboard*** _perms = new bitboard**[64];
+        bitboard*** _moves = new bitboard**[64];
 
         for(int sqr = 0; sqr < 64; ++sqr) {
-            rmask[sqr]  = new bitboard[2];
-            popcnt[sqr] = new int[2];
-            u[sqr]      = new int[2];
-            shamt[sqr]  = new int[2];
-            perms[sqr]  = new bitboard*[2];
-            moves[sqr]  = new bitboard*[2];
+            _rmask[sqr]  = new bitboard[2];
+            _popcnt[sqr] = new unsigned[2];
+            _u[sqr]      = new unsigned[2];
+            _shamt[sqr]  = new unsigned[2];
+            _perms[sqr]  = new bitboard*[2];
+            _moves[sqr]  = new bitboard*[2];
 
             for(int bsp: {0, 1}) {
-                rmask [sqr][bsp] = movegen::rmask(sqr, bsp);
-                popcnt[sqr][bsp] = __builtin_popcountll(rmask[sqr][bsp]);
-                u     [sqr][bsp] = 1U << popcnt[sqr][bsp];
-                shamt [sqr][bsp] = 64  - popcnt[sqr][bsp];
-                perms [sqr][bsp] = new bitboard[u[sqr][bsp]];
-                moves [sqr][bsp] = new bitboard[u[sqr][bsp]];
+                _rmask [sqr][bsp] = movegen::rmask(sqr, bsp);
+                _popcnt[sqr][bsp] = __builtin_popcountll(_rmask[sqr][bsp]);
+                _u     [sqr][bsp] = 1U << _popcnt[sqr][bsp];
+                _shamt [sqr][bsp] = 64  - _popcnt[sqr][bsp];
+                _perms [sqr][bsp] = new bitboard[_u[sqr][bsp]];
+                _moves [sqr][bsp] = new bitboard[_u[sqr][bsp]];
             }
 
             for(int bsp: {0, 1}) {
-                for(int i = 0; i < u[sqr][bsp]; ++i) {
-                    perms[sqr][bsp][i] = bits::occ_mask(i, popcnt[sqr][bsp], rmask[sqr][bsp]);
-                    moves[sqr][bsp][i] = movegen::satts(sqr, perms[sqr][bsp][i], bsp);
+                for(unsigned i = 0; i < _u[sqr][bsp]; ++i) {
+                    _perms[sqr][bsp][i] = bits::occ_mask(i, _popcnt[sqr][bsp], _rmask[sqr][bsp]);
+                    _moves[sqr][bsp][i] = movegen::satts(sqr, _perms[sqr][bsp][i], bsp);
                 }
             }
         }
+
+        rmask  = const_cast<const bitboard**>(_rmask);
+        popcnt = const_cast<const unsigned**>(_popcnt);
+        shamt  = const_cast<const unsigned**>(_shamt);
+        u      = const_cast<const unsigned**>(_u);
+        perms  = const_cast<const bitboard***>(_perms);
+        moves  = const_cast<const bitboard***>(_moves);
     }
 
     ~Tbls() {
@@ -349,12 +412,39 @@ struct Tbls {
     }
 };
 
+
+
+
+namespace magics {
+
+struct Magic {
+    std::atomic<uint64_t> key;
+    std::atomic<unsigned> shamt;
+
+    Magic() {}
+    Magic(uint64_t _key, unsigned _shamt): key(_key), shamt(_shamt) {}
+
+    void update(uint64_t _key, unsigned _shamt) {
+        key.store(_key, std::memory_order_relaxed);
+        shamt.store(_shamt, std::memory_order_relaxed);
+    }
+
+    uint64_t get_key() { 
+        return key.load(std::memory_order_relaxed);
+    }
+
+    unsigned get_shamt() { 
+        return shamt.load(std::memory_order_relaxed);
+    }
+
+};
+
 struct MChecker {
-    Tbls& tbl;
+    const Tbls& tbl;
     bitboard* atts;
     uint64_t* iters, iter;
 
-    MChecker(Tbls& _tbl): tbl(_tbl) {
+    MChecker(const Tbls& _tbl): tbl(_tbl) {
         atts  = new bitboard[1U << 12];
         iters = new uint64_t[1U << 12];
         iter = 0;
@@ -367,15 +457,16 @@ struct MChecker {
 
     bool valid_magic(int sqr, bool bsp, uint64_t magic, std::optional<unsigned> shamt = std::nullopt) {
         ++iter;
+        *shamt = shamt ? *shamt : tbl.shamt[sqr][bsp]; 
 
-        for(int j = 0; j < tbl.u[sqr][bsp]; ++j) {
-            unsigned k = unsigned((magic * tbl.perms[sqr][bsp][j]) >> (shamt ? *shamt : tbl.shamt[sqr][bsp]));
+        for(unsigned i = 0; i < tbl.u[sqr][bsp]; ++i) {
+            unsigned k = unsigned((magic * tbl.perms[sqr][bsp][i]) >> *shamt);
 
             if(iters[k] != iter) {
                 iters[k] = iter;
-                atts[k] = tbl.moves[sqr][bsp][j];
+                atts[k] = tbl.moves[sqr][bsp][i];
             }
-            else if(atts[k] != tbl.moves[sqr][bsp][j])
+            else if(atts[k] != tbl.moves[sqr][bsp][i])
                 return false;
             
         }
@@ -383,7 +474,7 @@ struct MChecker {
     }
 
     unsigned best_shamt(int sqr, bool bsp, uint64_t magic) {
-        for(int i = 61; i >= tbl.shamt[sqr][bsp]; --i)
+        for(unsigned i = 61; i >= tbl.shamt[sqr][bsp]; --i)
             if(valid_magic(sqr, bsp, magic, i))
                 return i;
 
@@ -391,363 +482,230 @@ struct MChecker {
     }
 };
 
-struct LPerm {
-    unsigned popcnt;
-    uint64_t state, max_iters, cur_iter;
-    static constexpr int max_k = 26, min_k = 39;
+Magic** generate_best() {
+    auto t = timing::current_time();
+    std::cout << "generating new magics..\n";
+
+    Magic** best = new Magic*[64];
+    Tbls tbl;
+    MChecker mc(tbl);
+    seqs::ran::pcg ran;
+    uint64_t magic;
+    unsigned its = 0;
+
+    for(int sqr = 0; sqr < 64; ++sqr) {
+        best[sqr] = new Magic[2];
+        for(int bsp: {0, 1}) {
+            do {
+                do magic = ran.next() & ran.next() & ran.next(), ++its;
+                while(!magic);
+            } while(!mc.valid_magic(sqr, bsp, magic));
+
+            best[sqr][bsp].update(magic, tbl.shamt[sqr][bsp]); 
+        }
+    }
+
+    std::cout << "generated all magics in " << its << " iterations (" 
+        << timing::elapsed(t) << "ms)\n"<< std::endl;
+    return best;
+}
+
+Magic** init_best() {
+    if(!std::filesystem::exists("dat"))
+        return generate_best();
+
+    auto t = timing::current_time();
+    std::cout << "reading magics..\n";
+
+    Magic** best = new Magic*[64];
+    std::ifstream in("dat", std::ios::binary);
+    uint64_t magic;
+    unsigned shamt;
+
+    for(int sqr = 0; sqr < 64; ++sqr) {
+        best[sqr] = new Magic[2];
+        for(int bsp: {0, 1}) {
+            in.read(reinterpret_cast<char*>(&magic),  sizeof(uint64_t));
+            in.read(reinterpret_cast<char*>(&shamt),  sizeof(unsigned));
+
+            best[sqr][bsp].update(magic, shamt);
+        }
+    }
     
-    LPerm(unsigned _popcnt) {
-        popcnt = _popcnt;
-        max_iters = nC(64, popcnt);
-        cur_iter = 0;
+    in.close();
+    std::cout << "read magics succesfully " << "(" << timing::elapsed(t) << "ms)\n"<< std::endl;
+    return best;
+}
 
-        state = 0;
-        for(unsigned i = 0; i < popcnt; ++i)
-            state |= 1ULL << i;
+void write_best_bin(Magic** best) {
+    if(!std::filesystem::exists("dat"))
+        system("touch dat");
+
+    std::ofstream out("dat", std::ios::binary);
+
+    for(int sqr = 0; sqr < 64; ++sqr) {
+        for(int bsp: {0, 1}) {
+            uint64_t magic = best[sqr][bsp].get_key();
+            unsigned shamt = best[sqr][bsp].get_shamt();
+
+            out.write(reinterpret_cast<const char*>(&magic),  sizeof(uint64_t));
+            out.write(reinterpret_cast<const char*>(&shamt),  sizeof(unsigned));
+        }
     }
 
-    // https://graphics.stanford.edu/%7Eseander/bithacks.html#NextBitPermutation
-    uint64_t next() {
-        ++cur_iter;
-        uint64_t t = state | (state - 1);
-        state = (t + 1) | (((~t & -~t) - 1) >> (__builtin_ctzll(state) + 1));
-        return state;
+    out.close();
+}
+
+void write_best_pretty(Magic** best) {
+    if(!std::filesystem::exists("best_magics"))
+        system("touch best_magics");
+
+    Tbls tbl;
+    std::ofstream out("best_magics");
+
+    out << "square:       key:                     bits used: (original)\n\n";
+    for(int sqr = 0; sqr < 64; ++sqr) {
+        uint64_t magic_rk  = best[sqr][0].get_key();         
+        uint64_t magic_bsp = best[sqr][1].get_key();         
+        unsigned shamt_rk  = best[sqr][0].get_shamt();
+        unsigned shamt_bsp = best[sqr][1].get_shamt();
+
+        char file = 'a' + char(sqr % 8); 
+        char rank = '1' + char(sqr / 8);
+        bool b0 = 64 - shamt_rk  < tbl.popcnt[sqr][0];
+        bool b1 = 64 - shamt_bsp < tbl.popcnt[sqr][1];
+        bool b2 = 64 - shamt_rk  < tbl.popcnt[sqr][0] - 1;
+        bool b3 = 64 - shamt_bsp < tbl.popcnt[sqr][1] - 1;
+
+        char buffer[1U << 16];
+
+        using ull = unsigned long long;
+        std::sprintf(
+                buffer, 
+                "%c%c:         %c%crk: 0x%-18llx %2d (%2d)         %c%cbsp: 0x%-18llx %2d (%d)",
+                file, rank,
+                b2 ? '!' : ' ', b0 ? '!' : ' ', 
+                (ull)magic_rk,  64 - shamt_rk,  tbl.popcnt[sqr][0],
+                b3 ? '!' : ' ', b1 ? '!' : ' ', 
+                (ull)magic_bsp, 64 - shamt_bsp, tbl.popcnt[sqr][1]);
+
+        out << buffer << '\n';  
     }
 
-    // good for n = 64, k < 27 or k > 38
-    static constexpr uint64_t nC(unsigned n, unsigned k) {
-        if( !k ) return 1;
-        return nC(n - 1, k - 1) * n / k;
-    }
-};
+    out.close();
+}
+
+void write_best(Magic** best) {
+    std::cout << "writing data...\n";
+    auto t = timing::current_time();
+
+    write_best_bin(best);
+    write_best_pretty(best);
+
+    std::cout << "wrote data succesfully (" << timing::elapsed(t) << "ms)\n" << std::endl;
+}
+
+} // namespace magics
 
 
-namespace Searcher {
 
-template<typename prng>
-struct Best_Seed {
-    MChecker mc;
-    prng ran;
-    std::atomic<unsigned>& glbl_min;
-    uint64_t* pstate;
-    
-    Best_Seed(Tbls& _tbl, std::atomic<unsigned>& _glbl_min):
-        mc(_tbl), glbl_min(_glbl_min) {
-            pstate = new uint64_t[prng::size];
+struct Searcher {
+    magics::MChecker mc;
+    magics::Magic** best;
+
+    Searcher(const Tbls& _tbl, magics::Magic** _best): mc(_tbl), best(_best) {}
+
+    void esearch(int start, __uint128_t offs, uint64_t start_state) {
+        seqs::LPerm lp(start);
+        if(offs) {
+            lp.cur_iter = offs;
+            lp.state = start_state; // pick up where we left off
         }
 
-    ~Best_Seed() {
-        delete[] pstate;
-    }
+        do {
 
-    void search() {
-        while(!read_fexit()) {
-            jmp();
-            unsigned count = count_its();
-            if(count) {
-                print_pstate(count);
-                glbl_min.store(count, std::memory_order_relaxed);
+            // add mutex locks for cout when this gets multithreaded
+            std::cout << "searching exhaustively with n = " << lp.popcnt << '\n';
+
+            while(lp.cur_iter != lp.max_iter && !fexit()) {
+                if(lp.cur_iter % 97 == 0)
+                    std::cout << '\r' << lp.progress() << "   " << bits::u128_tostring(lp.cur_iter);
+
+                check(lp.state);
+                lp.next();
             }
-        }
+            
+            if(fexit())
+                goto end;
+
+            std::cout << std::endl << "completed\n" << std::endl;
+
+            lp.init(lp.popcnt - 1);
+        } while(lp.popcnt > 0);
+
+        end:;
+        std::cout << "stopping search with n = " << lp.popcnt << " at iteration " << 
+            bits::u128_tostring(lp.cur_iter) << " / " << bits::u128_tostring(lp.max_iter) << 
+            "\nlast state: " << bits::u128_tostring16(lp.state)  << '\n' << std::endl;
     }
 
-    void jmp() {
-        do write_pstate();
-        while (!mc.valid_magic(0, 0, ran.sparse()));
-        read_pstate();
-    }
-
-    unsigned read_gmin() {
-        return glbl_min.load(std::memory_order_relaxed);
-    }
-
-    unsigned count_its() {
-        unsigned count = 0;
-
-        for(int sqr = 0; sqr < 64; ++sqr)
-            for(bool bsp: {0, 1})
-                if(!next_magic(sqr, bsp, count)) 
-                    return 0;
-
-        return count;
-    }
-
-    bool next_magic(int sqr, bool bsp, unsigned& count) {
-        uint64_t magic;
-
-        for(; count < read_gmin(); ++count) {
-            do magic = ran.sparse();
-            while (!magic);
-
-            if(mc.valid_magic(sqr, bsp, magic)) 
-                return true;
-        }
-
-        return false;
-    }
-
-    void print_pstate(unsigned count) {
+    template<typename Ran>
+    void rsearch(Ran& ran, bool dense) {
+        while(!fexit())
+            check(ran.next() | (dense ? ran.next() : 0));        
+        
         std::lock_guard<std::mutex> lock(glbl::cout_mutex);
-
-        std::cout << "seeds: ";
-        for(int i = 0; i < prng::size; ++i)
-            std::cout << "s[" << std::dec << i << "] = 0x" << std::hex << pstate[i] << "   ";
-        std::cout << "\niters = " << std::dec << count << '\n' << std::endl;
+        std::cout << "stopping search\n";
     }
 
-    void write_pstate() {
-        for(int i = 0; i < prng::size; ++i)
-            pstate[i] = ran.state[i];
-    }
-
-    void read_pstate() {
-        for(int i = 0; i < prng::size; ++i)
-            ran.state[i] = pstate[i];
-    }
-
-};
-
-struct Best_Magic {
-    MChecker mc;
-    std::atomic<uint64_t>** magics;
-    std::atomic<unsigned>** shamts;
-
-    Best_Magic(Tbls& _tbl, std::pair<std::atomic<uint64_t>**, std::atomic<unsigned>**> _bests): 
-        mc(_tbl) { 
-            magics = _bests.first;
-            shamts = _bests.second;
-    }
-
-    void search(LPerm& seq) {
-        while(seq.cur_iter < seq.max_iters && !read_fexit()) {
-            for(int sqr = 0; sqr < 64; ++sqr)
-                for(int bsp: {0, 1})
-                    update_best(sqr, bsp, seq.state);
-
-            seq.next();
-        } 
-    }
-
-    template<typename prng>
-    void rsearch(prng& ran, bool dense) {
-        while(!read_fexit()) {
-            uint64_t m = ran.next() | (dense ? ran.next() : 0);
-
-            for(unsigned sqr = 0; sqr < 64; ++sqr)
-                for(int bsp: {0, 1})
-                    update_best(sqr, bsp, m); 
-        }
-    } 
-
-    void write_magic(int sqr, bool bsp, uint64_t magic) {
-        magics[sqr][bsp].store(magic, std::memory_order_relaxed);
-    }
-
-    uint64_t read_shamt(int sqr, bool bsp) {
-        return shamts[sqr][bsp].load(std::memory_order_relaxed);
+    void check(uint64_t magic) {
+        for(unsigned sqr = 0; sqr < 64; ++sqr)
+            for(int bsp: {0, 1})
+                update_best(sqr, bsp, magic); 
     }
 
     void update_best(int sqr, bool bsp, uint64_t magic) {
-        unsigned bshamt = mc.best_shamt(sqr, bsp, magic);
+        unsigned best_shamt = mc.best_shamt(sqr, bsp, magic);
 
-        if(bshamt > read_shamt(sqr, bsp)) {
-            write_magic(sqr, bsp, magic);
-            shamts[sqr][bsp].store(bshamt, std::memory_order_relaxed);
+        if(__builtin_expect(best_shamt > best[sqr][bsp].get_shamt(), 0)) {
+            best[sqr][bsp].update(magic, best_shamt);
 
             std::lock_guard<std::mutex> lock(glbl::cout_mutex);
+            std::cout << "found new " << 
+                (bsp ? 'b' : 'r') << char('a' + sqr % 8) << char('1' + sqr / 8) << 
+                " key. shamt = " << 64 - best_shamt << "(" << mc.tbl.popcnt[sqr][bsp] << ")" <<
+                '\n' << std::endl;
         }
-    }
-
-    static std::pair<std::atomic<uint64_t>**, std::atomic<unsigned>**> generate_bests() {
-        std::atomic<uint64_t>** magics = new std::atomic<uint64_t>*[64];
-        std::atomic<unsigned>** shamts = new std::atomic<unsigned>*[64];
-
-        Tbls tbl;
-        MChecker mc(tbl);
-        ran::pcg ran;
-        uint64_t magic;
-
-        for(int sqr = 0; sqr < 64; ++sqr) {
-            magics[sqr] = new std::atomic<uint64_t>[2];
-            shamts[sqr] = new std::atomic<unsigned>[2];
-            for(int bsp: {0, 1}) {
-                do {
-                    do magic = ran.sparse();
-                    while(!magic);
-                } while(!mc.valid_magic(sqr, bsp, magic));
-
-                magics[sqr][bsp] = magic;
-                shamts[sqr][bsp] = mc.best_shamt(sqr, bsp, magic);
-            }
-        } 
-
-        return std::make_pair(magics, shamts);
-    }
-
-    static std::pair<std::atomic<uint64_t>**, std::atomic<unsigned>**>  read_bests() {
-        std::atomic<uint64_t>** magics = new std::atomic<uint64_t>*[64];
-        std::atomic<unsigned>** shamts = new std::atomic<unsigned>*[64];
-
-        std::ifstream in("dat", std::ios::binary);
-
-        uint64_t magic_rk, magic_bsp;
-        unsigned shamt_rk, shamt_bsp;
-
-        for(int sqr = 0; sqr < 64; ++sqr) {
-            in.read(reinterpret_cast<char*>(&magic_rk),  sizeof(magic_rk));
-            in.read(reinterpret_cast<char*>(&shamt_rk),  sizeof(shamt_rk));
-            in.read(reinterpret_cast<char*>(&magic_bsp), sizeof(magic_bsp));
-            in.read(reinterpret_cast<char*>(&shamt_bsp), sizeof(shamt_bsp));
-
-            magics[sqr][0].store(magic_rk,  std::memory_order_relaxed);
-            magics[sqr][0].store(shamt_rk,  std::memory_order_relaxed);
-            magics[sqr][1].store(magic_bsp, std::memory_order_relaxed);
-            magics[sqr][1].store(shamt_bsp, std::memory_order_relaxed);
-        }
-
-        in.close();
-        return std::make_pair(magics, shamts);
-    }
-
-    static void write_bests(std::pair<std::atomic<uint64_t>**, std::atomic<unsigned>**> bests) {
-        std::cout << "writing best_magics...\n";
-
-        if(!std::filesystem::exists("dat"))
-            system("touch dat");
-
-        std::ofstream out("dat", std::ios::binary);
-
-        for(int sqr = 0; sqr < 64; ++sqr) {
-            uint64_t magic_rk  = bests.first [sqr][0].load(std::memory_order_relaxed);         
-            unsigned shamt_rk  = bests.first [sqr][0].load(std::memory_order_relaxed);         
-            uint64_t magic_bsp = bests.second[sqr][1].load(std::memory_order_relaxed);         
-            unsigned shamt_bsp = bests.second[sqr][1].load(std::memory_order_relaxed);         
-
-            out.write(reinterpret_cast<const char*>(&magic_rk),  sizeof(magic_rk));
-            out.write(reinterpret_cast<const char*>(&shamt_rk),  sizeof(shamt_rk));
-            out.write(reinterpret_cast<const char*>(&magic_bsp), sizeof(magic_bsp));
-            out.write(reinterpret_cast<const char*>(&shamt_bsp), sizeof(shamt_bsp));
-        }
-
-        out.close();
-    }
-
-    static void write_bests_pretty(std::pair<std::atomic<uint64_t>**, std::atomic<unsigned>**> bests) {
-        std::cout << "writing best_magics_pretty...\n";
-        Tbls tbl;
-
-        if(!std::filesystem::exists("best_magics"))
-            system("touch best_magics");
-
-        std::ofstream out("best_magics");
-
-        for(int sqr = 0; sqr < 64; ++sqr) {
-            uint64_t magic_rk  = bests.first [sqr][0].load(std::memory_order_relaxed);         
-            unsigned shamt_rk  = bests.first [sqr][0].load(std::memory_order_relaxed);         
-            uint64_t magic_bsp = bests.second[sqr][1].load(std::memory_order_relaxed);         
-            unsigned shamt_bsp = bests.second[sqr][1].load(std::memory_order_relaxed);         
-
-            
-
-        }
-
-        out.close();
-    }
-
-    static std::pair<std::atomic<uint64_t>**, std::atomic<unsigned>**> init_bests() {
-        if(std::filesystem::exists("dat"))
-            return read_bests();
-
-        return generate_bests();
     }
 };
 
-} // namespace searcher
+void go_ran(int thread_count) {
+    using seqs::ran::xorshiro;
 
+    magics::Magic** best = magics::init_best();
+    const Tbls tbl;
 
-template<typename Ran> 
-void seed_search(int thread_count) {
-    using Searcher::Best_Seed, std::thread;
-
-    Tbls tbl;
-    std::atomic<unsigned> min(~0U);
-
-    thread* threads = new thread[thread_count];
-    Best_Seed<Ran>** searchers = new Best_Seed<Ran>*[thread_count];
+    xorshiro* rans = new xorshiro[thread_count]; 
+    Searcher** searchers = new Searcher*[thread_count]; 
+    std::thread* threads = new std::thread[thread_count];
 
     for(int i = 0; i < thread_count; ++i) {
-        searchers[i] = new Best_Seed<Ran>(tbl, min);
-        threads[i] = thread(&Best_Seed<Ran>::rsearch, searchers[i]);
-    }
-    
-    for(int i = 0; i < thread_count; ++i)
-        threads[i].join();
-
-    std::cout << "all threads joined succesfully...\n";
-}
-
-void magic_search_exh(bool multithread, bool dense) {
-    using Searcher::Best_Magic, std::thread;
-
-    auto bests = Best_Magic::init_bests();
-    Tbls tbl;
-
-    if(multithread) {
-        Best_Magic *searcher0 = new Best_Magic(tbl, bests), 
-                   *searcher1 = new Best_Magic(tbl, bests); 
-
-        for(int i = dense ? 63 : 1; !read_fexit() ; i += dense ? -2 : 2) {
-            LPerm seq0(i), seq1(i + (dense ? -1 : 1));
-
-            std::cout << "i = " << i << ", " << i + (dense ? -1 : 1) << std::endl;
-            thread t0(&Best_Magic::search, searcher0, std::ref(seq0));
-            thread t1(&Best_Magic::search, searcher0, std::ref(seq1));
-
-            t0.join();
-            t1.join();
-        }
-
-    } else {
-        Best_Magic searcher(tbl, bests); 
-         
-        for(int i = dense ? 63 : 1; !read_fexit() ; i += dense ? -1 : 1) {
-            LPerm seq(i);
-            std::cout << "i = " << i << std::endl;
-            searcher.search(seq);
-        }
-    }
-
-    Best_Magic::write_bests(bests);
-}
-
-template<typename Ran> 
-void magic_search_ran(int thread_count, int dense_count) {
-    using Searcher::Best_Magic, std::thread;
-
-    auto bests = Searcher::Best_Magic::init_bests();
-    Tbls tbl;
-    Ran ran;
-
-    thread* threads = new thread[thread_count];
-    Best_Magic** searchers = new Best_Magic*[thread_count];
-    
-    for(int i = 0; i < thread_count; ++i) {
-        searchers[i] = new Best_Magic(tbl, bests);
-        threads[i] = thread(&Best_Magic::rsearch<Ran>, searchers[i], std::ref(ran), i < dense_count);
+        searchers[i] = new Searcher(tbl, best);
+        threads[i] = std::thread(&Searcher::rsearch<xorshiro>, searchers[i], std::ref(rans[i]), 1);
     }
 
     for(int i = 0; i < thread_count; ++i)
         threads[i].join();
 
+    std::cout << "all threads joined succesfully\n\n";
 
-    Best_Magic::write_bests(bests);
+    magics::write_best(best);
 }
 
-
-int main(int argc, char **argv) {
+int main() {
     std::signal(SIGINT, handle_sigint);
 
-    magic_search_ran<ran::xorshiro>(1, 0);
+    go_ran(5);
 
     std::cout << "exiting...\n";
     return 0;
