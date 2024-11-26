@@ -283,7 +283,7 @@ void searcher(std::atomic<uint64_t>** magics, const Tbls& tbl) {
                     unsigned s = __builtin_popcountll(tbl.rmask[sqr][bsp]);
                     std::cout << "found new " << 
                         (bsp ? 'b' : 'r') << char('a' + sqr % 8) << char('1' + sqr / 8) << 
-                        " key. shamt: " << s - 1 << "(" << s << ")\n";
+                        " magic. shamt: " << s - 1 << " (" << s << ")\n";
                 }
             }
         }
