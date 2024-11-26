@@ -21,11 +21,9 @@ using namespace std::chrono;
 
 auto current_time() { return steady_clock::now(); }
 
-auto elapsed_ns(steady_clock::time_point& t) {
-    return duration_cast<nanoseconds>(steady_clock::now() - t).count(); }
-auto elapsed_mcs (steady_clock::time_point& t) { return double(elapsed_ns(t))  / 1'000.0; }
-auto elapsed_ms  (steady_clock::time_point& t) { return elapsed_mcs(t) / 1'000.0; }
-auto elapsed_sec (steady_clock::time_point& t) { return elapsed_ms(t)  / 1'000.0; }
+auto elapsed_ms(steady_clock::time_point& t) {
+    return duration_cast<milliseconds>(steady_clock::now() - t).count(); }
+auto elapsed_sec (steady_clock::time_point& t) { return double(elapsed_ms(t))  / 1'000.0; }
 auto elapsed_min (steady_clock::time_point& t) { return elapsed_sec(t) / 60.0; }
 auto elapsed_hrs (steady_clock::time_point& t) { return elapsed_min(t) / 60.0; }
 auto elapsed_days(steady_clock::time_point& t) { return elapsed_hrs(t) / 24.0; }
@@ -328,11 +326,11 @@ void write_pretty(std::atomic<uint64_t>** magics) {
         out << buffer;
     }
 
-    double sum_ttl_mb = double(sum_ttl * 8) / (1u << 20); 
-    double sum_2_mb = double(sum_2 * 8) / (1u << 20); 
+    double sum_ttl_kib = double(sum_ttl * 8) / (1u << 10); 
+    double sum_2_kib = double(sum_2 * 8) / (1u << 10); 
 
-    out << "\n\ntable size reduced from " << sum_ttl_mb << "mb to " <<
-        sum_2_mb << "mb. (-" << (sum_ttl_mb - sum_2_mb) << "mb)\n";
+    out << "\n\ntable size reduced from " << sum_ttl_kib << "kib to " <<
+        sum_2_kib << "kib. (-" << ((sum_ttl_kib - sum_2_kib) / sum_ttl_kib) * 100 << "%)\n";
 
     out.close();
     std::cout << "done. \n" << std::endl;;
