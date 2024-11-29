@@ -263,6 +263,7 @@ uint64_t get_seed64() {
 void searcher(std::atomic<uint64_t>** magics, const Tbls& tbl) {
     std::mt19937_64 ran(get_seed64());
     Checker checker(tbl);
+    static std::mutex cout_mutex;
     uint64_t magic;
 
     while(!fexit()) {
@@ -275,9 +276,7 @@ void searcher(std::atomic<uint64_t>** magics, const Tbls& tbl) {
                 {
                     magics[sqr][bsp].store(magic, std::memory_order_relaxed);
 
-                    static std::mutex cout_mutex;
                     std::lock_guard<std::mutex> lock(cout_mutex);
-
                     unsigned s = __builtin_popcountll(tbl.rmask[sqr][bsp]);
                     std::cout << "found new " << 
                         (bsp ? 'b' : 'r') << char('a' + sqr % 8) << char('1' + sqr / 8) << 
@@ -318,7 +317,7 @@ void write_pretty(std::atomic<uint64_t>** magics) {
 
         using ull = unsigned long long;
         std::sprintf(buffer,
-                "%c%c - %2d:        rk: 0x%-18llx %2d (%2d)         bsp: 0x%-18llx %2d (%d)\n", 
+                "%c%c - %2d:        rk: 0x%-18llx %-2d (%2d)         bsp: 0x%-18llx %2d (%d)\n", 
                 file, rank, sqr, 
                 ull(rmagic), rshamt - (rmagic > 0), rshamt, 
                 ull(bmagic), bshamt - (bmagic > 0), bshamt);
@@ -411,7 +410,7 @@ void go(int thread_count) {
 int main() {
     std::signal(SIGINT, handle_sigint);
     
-    go(8);
+    go(3);
 
     std::cout << "exiting...\n";
     return 0;
