@@ -8,17 +8,15 @@
 #include <iostream>
 #include <thread>
 
-extern Magic rmagics[64];
-extern Magic bmagics[64];
-extern bitboard patts_tbl[64][2];
+extern int magic_search_iters;
 
-extern int t;
 int main() {
     using namespace std;
 
-    movegen::init_atts();
-    cout << dec << t << '\n';
+    MoveGen tbl;
 
+    Position p("rnbqkbnr/pp1ppppp/8/2p5/4P3/5N2/PPPP1PPP/RNBQKB1R b KQkq - 1 2");
+    p.print_full(1);
 
     return 0;
 }

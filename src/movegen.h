@@ -1,32 +1,33 @@
 #ifndef MOVEGEN_H
 #define MOVEGEN_H
 
+// make clangd shutup about nonsense recursive include error
+#pragma once
+
 #include "types.h"
 #include "position.h"
 #include "misc.h"
 
-struct xorshift {
-    uint64_t state;
-    uint64_t next();
-    uint64_t sparse();
-};
+struct MoveGen {
+    Magic magics[64][2];
+    bitboard patts[64][2], natts[64], katts[64];
 
-struct Magic {
-    uint64_t  key;
-    bitboard* atts;
-    bitboard  rmask;
-    unsigned  shamt;
+    MoveGen();
 
-    Magic(int, bool, xorshift&);
-    Magic(){};
-    unsigned index(bitboard);
-    bitboard get_atts(bitboard, bitboard);
+    bitboard pmoves(int, bool, bitboard, bitboard);
+    bitboard nmoves(int, bitboard);
+    bitboard bmoves(int, bitboard, bitboard);
+    bitboard rmoves(int, bitboard, bitboard);
+    bitboard qmoves(int, bitboard, bitboard);
+    bitboard kmoves(int, bitboard);
+
+    bool attd(int, bool, bitboard, bitboard, bitboard, bitboard, bitboard, bitboard, bitboard);
 };
 
 namespace movegen {
 
-void init_atts();
-bitboard occ_mask(unsigned, int, bitboard);
+bitboard next_move(bitboard&);
+
 bitboard ray(int, int, bitboard);
 bitboard rmask(int, bool);
 bitboard satts(int, bitboard, bool);
@@ -34,7 +35,6 @@ bitboard patts(int, bool);
 bitboard natts(int);
 bitboard katts(int);
 
-}
-
+} // namespace movegen
 
 #endif

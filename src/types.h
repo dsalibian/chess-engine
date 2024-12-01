@@ -3,7 +3,7 @@
 
 #include <cassert>
 #include <cstdint>
-#include <array>
+#include <optional>
 
 using std::uint64_t;
 using bitboard = std::uint64_t;
@@ -52,7 +52,7 @@ enum Square_BB {
     RANK_BBS(8)
 };
 
-enum Files_Ranks {
+enum Ranks_Files {
     a_file  = 0x0101010101010101ULL,
     b_file  = 0x0202020202020202ULL, 
     g_file  = 0x4040404040404040ULL, 
@@ -68,6 +68,17 @@ enum Files_Ranks {
     rank_12 = 0x000000000000ffffULL,
     rank_78 = 0xffff000000000000ULL,
     rank_18 = 0xff000000000000ffULL,
+};
+
+struct Magic {
+    uint64_t  magic;
+    bitboard* atts;
+    bitboard  rmask;
+    unsigned  shamt;
+
+    Magic(){};
+    Magic(int, bool, uint64_t&);
+    bitboard get_moves(bitboard, std::optional<bitboard>);
 };
 
 #endif
