@@ -1,5 +1,4 @@
-#ifndef TYPES_H
-#define TYPES_H
+#pragma once
 
 #include <cassert>
 #include <cstdint>
@@ -80,5 +79,3 @@ struct Magic {
     Magic(int, bool, uint64_t&);
     bitboard get_moves(bitboard, std::optional<bitboard>);
 };
-
-#endif

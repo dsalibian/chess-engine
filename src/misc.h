@@ -1,5 +1,4 @@
-#ifndef MISC_H
-#define MISC_H
+#pragma once
 
 #include "types.h"
 #include <chrono>
@@ -34,5 +33,3 @@ long time_func(F& f) {
     f();    
     return duration_cast<milliseconds>(steady_clock::now()-t0).count();
 }
-
-#endif

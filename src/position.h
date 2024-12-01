@@ -1,7 +1,3 @@
-#ifndef POSITION_H
-#define POSITION_H
-
-// make clangd shutup about nonsense recursive include error
 #pragma once 
 
 #include "types.h"
@@ -29,5 +25,3 @@ struct Position {
     void print_info();
     void print_full(bool);
 };
-
-#endif

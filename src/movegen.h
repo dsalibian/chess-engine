@@ -1,7 +1,3 @@
-#ifndef MOVEGEN_H
-#define MOVEGEN_H
-
-// make clangd shutup about nonsense recursive include error
 #pragma once
 
 #include "types.h"
@@ -36,5 +32,3 @@ bitboard natts(int);
 bitboard katts(int);
 
 } // namespace movegen
-
-#endif

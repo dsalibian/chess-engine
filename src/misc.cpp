@@ -5,6 +5,7 @@
 namespace bits {
 
 
+
 void print_bb(bitboard bb) {
     for(int r = 7; r >= 0; --r) {
         std::cout << ' ' << r + 1 << "   ";
@@ -45,7 +46,6 @@ bitboard occ_mask(unsigned index, int bitcount, bitboard atts) {
 
 
 
-
 namespace ran {
 
 uint64_t xorshift(uint64_t& state) {
@@ -58,12 +58,10 @@ uint64_t xorshift_sparse(uint64_t& state) {
     return xorshift(state) & xorshift(state) & xorshift(state);
 }
 
+} // namespace ran
 
 
 
 std::string sqr_tostring(int sqr) {
     return std::string {char('a' + (sqr % 8)), char('1' + sqr / 8)};
 }
-
-} // namespace ran
-
