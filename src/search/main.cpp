@@ -1,5 +1,6 @@
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <iostream>
 #include <random>
@@ -11,10 +12,10 @@
 #include <filesystem>
 #include <fstream>
 #include <thread>
+#include <algorithm>
 
 using std::uint64_t;
 using bitboard = std::uint64_t;
-
 
 namespace timing {
 using namespace std::chrono;
@@ -125,8 +126,43 @@ bitboard occ_mask(unsigned index, int bitcount, bitboard atts) {
     return occ;
 }
 
+uint64_t next_lperm(uint64_t v) {
+    uint64_t t = v | (v - 1);
+    return (t + 1) | (((~t & -~t) - 1) >> (__builtin_ctzll(v) + 1));
+}
+
 } // namespace bits
 
+__uint128_t nC(unsigned n, unsigned k) {
+    return k == 0 || k == n ? 1 : n * nC(n - 1, k - 1) / k;
+}
+
+std::string u128_tostring(__uint128_t n, unsigned base) {
+    std::string s{""};
+    do {
+        unsigned k = unsigned(n % base);
+
+        if(base <= 10) s = char('0' + k) + s;
+        else if(base <= 36) s = char(k < 10 ? '0' + k : 'a' + k - 10) + s;
+        else s = std::to_string(k) + ' ' +  s;
+
+        n /= base;
+    } while(n);
+
+    return s;
+}
+
+namespace ran {
+
+uint64_t rd64() {
+    static std::mutex rand_mutex;
+    std::lock_guard<std::mutex> lock(rand_mutex);
+
+    static std::random_device rd;
+    return (uint64_t(rd()) << 32) | rd();
+}
+
+};
 
 // precaulcuate things that are worth precaulcating
 struct Tbls {
@@ -194,16 +230,15 @@ struct Checker {
     }
 
     unsigned hash(uint64_t key, uint64_t magic, unsigned shamt) {
-        // key ^= key >> shamt;
         return unsigned((key * magic) >> shamt);
     }
 
     bool valid_magic(int sqr, bool bsp, uint64_t magic, std::optional<unsigned> shamt = std::nullopt) {
         ++iter;
 
-        unsigned popcnt = __builtin_popcountll(tbl.rmask[sqr][bsp]);
+        int popcnt = __builtin_popcountll(tbl.rmask[sqr][bsp]);
         if(!shamt)
-            *shamt = 64 - popcnt + 1;
+            *shamt = 64 - popcnt;
 
         for(unsigned i = 0; i < 1u << popcnt; ++i) {
             unsigned k = hash(tbl.perms[sqr][bsp][i], magic, *shamt);
@@ -225,8 +260,7 @@ void perft() {
     const Tbls tbl;
     Checker checker(tbl);
 
-    std::random_device rd;
-    std::mt19937_64 ran((uint64_t(rd()) << 32) | rd());
+    std::mt19937_64 ran(ran::rd64());
 
     uint64_t count_magics = 0, count_total = 0, magic;
     auto t = timing::current_time();
@@ -252,16 +286,8 @@ void perft() {
     std::cout << std::endl << std::endl;;
 }
 
-uint64_t get_seed64() {
-    static std::mutex rand_mutex;
-    std::lock_guard<std::mutex> lock(rand_mutex);
-
-    static std::random_device rd;
-    return (uint64_t(rd()) << 32) | rd();
-}
-
 void searcher(std::atomic<uint64_t>** magics, const Tbls& tbl) {
-    std::mt19937_64 ran(get_seed64());
+    std::mt19937_64 ran(ran::rd64());
     Checker checker(tbl);
     static std::mutex cout_mutex;
     uint64_t magic;
@@ -272,7 +298,7 @@ void searcher(std::atomic<uint64_t>** magics, const Tbls& tbl) {
         for(int sqr = 0; sqr < 64; ++sqr) {
             for(bool bsp: {0, 1}) {
                 if(!(magics[sqr][bsp].load(std::memory_order_relaxed)) &&
-                        checker.valid_magic(sqr, bsp, magic)) 
+                        checker.valid_magic(sqr, bsp, magic, 64 - __builtin_popcountll(magic) + 1)) 
                 {
                     magics[sqr][bsp].store(magic, std::memory_order_relaxed);
 
@@ -374,10 +400,10 @@ std::atomic<uint64_t>** init_magics() {
     uint64_t rmagic, bmagic;
 
     for(int sqr = 0; sqr < 64; ++sqr) {
-        in.read(reinterpret_cast<char*>(&rmagic),  sizeof(uint64_t));
+        in.read(reinterpret_cast<char*>(&rmagic), sizeof(uint64_t));
         in.read(reinterpret_cast<char*>(&bmagic), sizeof(uint64_t));
 
-        magics[sqr][0].store(rmagic,  std::memory_order_relaxed);
+        magics[sqr][0].store(rmagic, std::memory_order_relaxed);
         magics[sqr][1].store(bmagic, std::memory_order_relaxed);
     }
 
@@ -406,12 +432,86 @@ void go(int thread_count) {
     write_pretty(magics);
 }
 
+bool first_time_nigga = true;
+uint64_t ran_nbit(int bitcount) {
+    static std::mt19937_64 mt(9);
+    static std::uniform_int_distribution ran(0, 64);
+    static uint64_t* bit = new uint64_t[64];
+
+    if(first_time_nigga) {
+        first_time_nigga = false;
+        for(int i = 0; i < 64; ++i)
+            bit[i] = 1ull << i;
+    }
+
+    uint64_t n = 0;
+    int index;
+    for(int i = 0; i < bitcount; ++i) {
+        do index = ran(mt);
+        while(n & bit[index]);
+
+        n |= bit[index];
+    }
+
+    return n;
+}
+
+
+void find_all_magics() {
+    const Tbls tbl;
+    Checker checker(tbl);
+
+    auto first_perm = [](int popcnt) {
+        uint64_t t = 0;
+        for(int i = 0; i < popcnt; ++i)
+            t |= 1ull << i;
+        return t;
+    };
+
+    system("touch allmagics");
+    std::ofstream out("allmagics", std::ios::binary);
+
+    uint64_t count = 0;
+    for(int popcnt = 1; popcnt < 13 && !fexit(); ++popcnt) {
+        auto t = timing::current_time();
+        uint64_t cur = first_perm(popcnt);
+
+        __uint128_t u = nC(64, popcnt);    
+        for(__uint128_t i = 0; i < u && !fexit(); ++i, cur = bits::next_lperm(cur)) {
+            for(int j = 0; j < 128; ++j) {
+                if(checker.valid_magic(j % 64, j > 63, cur)) {
+                    out.write(reinterpret_cast<const char*>(&cur), sizeof(uint64_t));
+                    ++count;
+                    break;
+                }
+            }
+
+            if(timing::elapsed_ms(t) > 1000) {
+                t = timing::current_time();
+                std::cout << "\r                            " <<
+                    '\r' << double(i) / double(u) * 100 << " " << count;
+                std::flush(std::cout);
+            }
+        }
+        
+        std::cout << "\r                                " <<
+            "\rfinished popcnt = " << popcnt << '\n';
+    }
+    out.close();
+
+    if(!fexit())
+        std::cout << "SEARCH COMPLETE\n\n";
+    else {
+        std::cout << "resetting search\n";
+        system("rm allmagics");
+    }
+}
 
 int main() {
     std::signal(SIGINT, handle_sigint);
-    
-    go(3);
 
+    find_all_magics();
+    
     std::cout << "exiting...\n";
     return 0;
 }
