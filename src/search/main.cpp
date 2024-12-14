@@ -38,7 +38,7 @@ namespace glbl {
 }
 
 void handle_sigint(int signal) {
-    std::cout << "\nsigint signal " << signal << " received...\n\n";
+    std::cout << "\nsigint signal " << signal << " received...\n" << std::endl;
     glbl::fexit.store(true, std::memory_order_relaxed);
 }
 
@@ -133,14 +133,14 @@ uint64_t next_lperm(uint64_t v) {
 
 } // namespace bits
 
-__uint128_t nC(unsigned n, unsigned k) {
-    return k == 0 || k == n ? 1 : n * nC(n - 1, k - 1) / k;
+constexpr __uint128_t init_u128(uint64_t hi, uint64_t lo) {
+    return (__uint128_t(hi) << 64) | lo;
 }
 
 std::string u128_tostring(__uint128_t n, unsigned base) {
     std::string s{""};
     do {
-        unsigned k = unsigned(n % base);
+        int k = int(n % base);
 
         if(base <= 10) s = char('0' + k) + s;
         else if(base <= 36) s = char(k < 10 ? '0' + k : 'a' + k - 10) + s;
@@ -150,6 +150,10 @@ std::string u128_tostring(__uint128_t n, unsigned base) {
     } while(n);
 
     return s;
+}
+
+constexpr __uint128_t nC(unsigned n, unsigned k) {
+    return k == 0 || k == n ? 1 : n * nC(n - 1, k - 1) / k;
 }
 
 namespace ran {
@@ -162,7 +166,35 @@ uint64_t rd64() {
     return (uint64_t(rd()) << 32) | rd();
 }
 
-};
+
+// https://github.com/imneme/pcg-cpp/blob/master/include/pcg_random.hpp
+// https://github.com/lemire/testingRNG/blob/master/source/pcg64.h
+uint64_t next(__uint128_t& state) {
+    constexpr __uint128_t MULT = init_u128(0x2360ed051fc65da4ull, 0x4385df649fccf645ull); 
+    constexpr __uint128_t INC  = init_u128(0x5851f42d4c957f2dull, 0x14057b7ef767814full); 
+    auto rotr = [](uint64_t x, unsigned k) {
+        return (x >> k) | (x << ((-k) & 63));
+    };
+
+    state = state * MULT + INC;
+    uint64_t hi = uint64_t(state >> 64);
+    uint64_t lo = uint64_t(state);
+    return rotr(hi ^ lo, unsigned(state >> 122u));
+}
+
+uint64_t sparse(__uint128_t& state) {
+    return next(state) & next(state) & next(state);
+}
+
+uint64_t peek_sparse(__uint128_t state) {
+    return next(state) & next(state) & next(state);
+}
+
+__uint128_t seed() {
+    return init_u128(rd64(), rd64());
+}
+
+}; // namespace ran
 
 // precaulcuate things that are worth precaulcating
 struct Tbls {
@@ -181,7 +213,7 @@ struct Tbls {
             _moves[sqr] = new bitboard*[2];
 
             for(bool bsp: {0, 1}) {
-                _rmask [sqr][bsp] = movegen::rmask(sqr, bsp);
+                _rmask[sqr][bsp] = movegen::rmask(sqr, bsp);
                 unsigned popcnt = __builtin_popcountll(_rmask[sqr][bsp]);
                 unsigned u = 1u << popcnt;
 
@@ -195,9 +227,9 @@ struct Tbls {
             }
         }
 
-        rmask  = const_cast<const bitboard**>(_rmask);
-        perms  = const_cast<const bitboard***>(_perms);
-        moves  = const_cast<const bitboard***>(_moves);
+        rmask = const_cast<const bitboard** >(_rmask);
+        perms = const_cast<const bitboard***>(_perms);
+        moves = const_cast<const bitboard***>(_moves);
     }
 
     ~Tbls() {
@@ -229,8 +261,8 @@ struct Checker {
         iter = 0;
     }
 
-    unsigned hash(uint64_t key, uint64_t magic, unsigned shamt) {
-        return unsigned((key * magic) >> shamt);
+    unsigned hash(uint64_t magic, uint64_t key, unsigned shamt) {
+        return unsigned((magic * key) >> shamt);
     }
 
     bool valid_magic(int sqr, bool bsp, uint64_t magic, std::optional<unsigned> shamt = std::nullopt) {
@@ -241,7 +273,7 @@ struct Checker {
             *shamt = 64 - popcnt;
 
         for(unsigned i = 0; i < 1u << popcnt; ++i) {
-            unsigned k = hash(tbl.perms[sqr][bsp][i], magic, *shamt);
+            unsigned k = hash(magic, tbl.perms[sqr][bsp][i], *shamt);
 
             if(iters[k] != iter) {
                 iters[k] = iter;
@@ -286,7 +318,7 @@ void perft() {
     std::cout << std::endl << std::endl;;
 }
 
-void searcher(std::atomic<uint64_t>** magics, const Tbls& tbl) {
+void magic_searcher(std::atomic<uint64_t>** magics, const Tbls& tbl) {
     std::mt19937_64 ran(ran::rd64());
     Checker checker(tbl);
     static std::mutex cout_mutex;
@@ -413,15 +445,15 @@ std::atomic<uint64_t>** init_magics() {
 }
 
 
-void go(int thread_count) {
+void go_magic(int thread_count) {
     std::atomic<uint64_t>** magics = init_magics();
     const Tbls tbl;
 
-    std::cout << "starting search with " << thread_count << " threads...\n\n" << std::endl;
+    std::cout << "starting magic search with " << thread_count << " threads...\n\n" << std::endl;
 
     std::thread** threads = new std::thread*[thread_count];
     for(int i = 0; i < thread_count; ++i) 
-        threads[i] = new std::thread(&searcher, magics, std::ref(tbl));
+        threads[i] = new std::thread(&magic_searcher, magics, std::ref(tbl));
 
     for(int i = 0; i < thread_count; ++i) 
         threads[i]->join();
@@ -432,85 +464,115 @@ void go(int thread_count) {
     write_pretty(magics);
 }
 
-bool first_time_nigga = true;
-uint64_t ran_nbit(int bitcount) {
-    static std::mt19937_64 mt(9);
-    static std::uniform_int_distribution ran(0, 64);
-    static uint64_t* bit = new uint64_t[64];
-
-    if(first_time_nigga) {
-        first_time_nigga = false;
-        for(int i = 0; i < 64; ++i)
-            bit[i] = 1ull << i;
-    }
-
-    uint64_t n = 0;
-    int index;
-    for(int i = 0; i < bitcount; ++i) {
-        do index = ran(mt);
-        while(n & bit[index]);
-
-        n |= bit[index];
-    }
-
-    return n;
-}
-
-
-void find_all_magics() {
-    const Tbls tbl;
+void seed_searcher(const Tbls& tbl, std::atomic<int>& glbl_min) {
     Checker checker(tbl);
 
-    auto first_perm = [](int popcnt) {
-        uint64_t t = 0;
-        for(int i = 0; i < popcnt; ++i)
-            t |= 1ull << i;
-        return t;
-    };
+    auto count_iters = [&checker](__uint128_t& state) {
+        __uint128_t ostate = state;
+        uint64_t magic;
 
-    system("touch allmagics");
-    std::ofstream out("allmagics", std::ios::binary);
+        int found_count[128]{0};
+        int iters = 0;
 
-    uint64_t count = 0;
-    for(int popcnt = 1; popcnt < 13 && !fexit(); ++popcnt) {
-        auto t = timing::current_time();
-        uint64_t cur = first_perm(popcnt);
-
-        __uint128_t u = nC(64, popcnt);    
-        for(__uint128_t i = 0; i < u && !fexit(); ++i, cur = bits::next_lperm(cur)) {
-            for(int j = 0; j < 128; ++j) {
-                if(checker.valid_magic(j % 64, j > 63, cur)) {
-                    out.write(reinterpret_cast<const char*>(&cur), sizeof(uint64_t));
-                    ++count;
-                    break;
+        for(int found = 0; found < 128; ) {
+            do magic = ran::sparse(state), ++iters;    
+            while(!magic);
+            
+            for(int i = 0; i < 128; ++i) {
+                if(!found_count[i] && checker.valid_magic(i % 64, i < 64, magic)) {
+                    ++found;
+                    ++found_count[i];
                 }
             }
+        }
 
-            if(timing::elapsed_ms(t) > 1000) {
-                t = timing::current_time();
-                std::cout << "\r                            " <<
-                    '\r' << double(i) / double(u) * 100 << " " << count;
-                std::flush(std::cout);
+        state = ostate;
+        int u = iters;
+
+        for(int j = 0; j < u; ++j) {
+            do {
+                ostate = state;
+                magic = ran::sparse(state);
+                --iters;  
+            }
+            while(!magic);
+            
+            for(int i = 0; i < 128; ++i) {
+                if(checker.valid_magic(i % 64, i < 64, magic)) {
+                    if(!--found_count[i]) {
+                        state = ostate;
+                        return iters;
+                    }
+                }
             }
         }
-        
-        std::cout << "\r                                " <<
-            "\rfinished popcnt = " << popcnt << '\n';
-    }
-    out.close();
 
-    if(!fexit())
-        std::cout << "SEARCH COMPLETE\n\n";
-    else {
-        std::cout << "resetting search\n";
-        system("rm allmagics");
-    }
+        return -1;
+    };
+
+    __uint128_t state = ran::seed();
+    int count = 1;
+    while(!fexit()) {
+        for(int i = 0; i < count; ++i)
+            ran::next(state);
+
+        count = count_iters(state);
+        
+        if(count < glbl_min.load(std::memory_order_seq_cst)) {
+            glbl_min.store(count, std::memory_order_seq_cst);
+
+            static std::mutex cout_mutex;
+            std::lock_guard<std::mutex> lock(cout_mutex);
+        
+            uint64_t hi = uint64_t(state >> 64);
+            uint64_t lo = uint64_t(state);
+            std::cout << "iterations: " << count << 
+                "   seed: 0x" << std::hex << hi << " 0x" << lo << std::dec << std::endl;
+        }
+    } 
 }
+
+void go_seed(int thread_count) {
+    const Tbls tbl;
+    std::atomic<int> glbl_min {INT32_MAX};
+
+    std::cout << "starting seed search with " << thread_count << " threads...\n\n" << std::endl;
+
+    std::thread** threads = new std::thread*[thread_count];
+    for(int i = 0; i < thread_count; ++i) 
+        threads[i] = new std::thread(&seed_searcher,  std::ref(tbl), std::ref(glbl_min));
+
+    for(int i = 0; i < thread_count; ++i) 
+        threads[i]->join();
+
+    std::cout << "all threads joined succesfully\n" << std::endl;
+}
+
+int count_its_test(__uint128_t state) {
+    const Tbls tbl;
+    Checker checker(tbl);
+    uint64_t magics[128]{};
+    uint64_t magic;
+
+    int it_count = 0;
+    int counter = 0;
+    do {
+        do magic = ran::sparse(state), ++it_count;
+        while(!magic);
+
+        for(int i = 0; i < 128; ++i)
+            if(!magics[i] && checker.valid_magic(i % 64, i < 64, magic))
+                magics[i] = magic, ++counter;
+    } while(counter < 128);
+
+    return it_count;
+}
+
 
 int main() {
     std::signal(SIGINT, handle_sigint);
 
-    find_all_magics();
+    go_seed(3);
     
     std::cout << "exiting...\n";
     return 0;
