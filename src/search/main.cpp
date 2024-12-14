@@ -330,7 +330,11 @@ void magic_searcher(std::atomic<uint64_t>** magics, const Tbls& tbl) {
         for(int sqr = 0; sqr < 64; ++sqr) {
             for(bool bsp: {0, 1}) {
                 if(!(magics[sqr][bsp].load(std::memory_order_relaxed)) &&
-                        checker.valid_magic(sqr, bsp, magic, 64 - __builtin_popcountll(magic) + 1)) 
+                        checker.valid_magic(
+                            sqr, 
+                            bsp, 
+                            magic, 
+                            64 - __builtin_popcountll(tbl.rmask[sqr][bsp]) + 1)) 
                 {
                     magics[sqr][bsp].store(magic, std::memory_order_relaxed);
 
