@@ -20,10 +20,13 @@ using bitboard = std::uint64_t;
 namespace timing {
 using namespace std::chrono;
 
-auto current_time() { return steady_clock::now(); }
+auto current_time() { 
+    return steady_clock::now(); 
+}
 
 auto elapsed_ms(steady_clock::time_point& t) {
-    return duration_cast<milliseconds>(steady_clock::now() - t).count(); }
+    return duration_cast<milliseconds>(steady_clock::now() - t).count(); 
+}
 auto elapsed_sec (steady_clock::time_point& t) { return double(elapsed_ms(t))  / 1'000.0; }
 auto elapsed_min (steady_clock::time_point& t) { return elapsed_sec(t) / 60.0; }
 auto elapsed_hrs (steady_clock::time_point& t) { return elapsed_min(t) / 60.0; }
@@ -105,7 +108,6 @@ bitboard satts(int sqr, uint64_t block, bool bsp) {
 } // namespace movegen
 
 
-
 namespace bits {
 
 void pop_lsb(bitboard& bb) {
@@ -165,7 +167,6 @@ uint64_t rd64() {
     static std::random_device rd;
     return (uint64_t(rd()) << 32) | rd();
 }
-
 
 // https://github.com/imneme/pcg-cpp/blob/master/include/pcg_random.hpp
 // https://github.com/lemire/testingRNG/blob/master/source/pcg64.h
@@ -551,27 +552,6 @@ void go_seed(int thread_count) {
 
     std::cout << "all threads joined succesfully\n" << std::endl;
 }
-
-int count_its_test(__uint128_t state) {
-    const Tbls tbl;
-    Checker checker(tbl);
-    uint64_t magics[128]{};
-    uint64_t magic;
-
-    int it_count = 0;
-    int counter = 0;
-    do {
-        do magic = ran::sparse(state), ++it_count;
-        while(!magic);
-
-        for(int i = 0; i < 128; ++i)
-            if(!magics[i] && checker.valid_magic(i % 64, i < 64, magic))
-                magics[i] = magic, ++counter;
-    } while(counter < 128);
-
-    return it_count;
-}
-
 
 int main() {
     std::signal(SIGINT, handle_sigint);
