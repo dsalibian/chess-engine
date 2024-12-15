@@ -469,18 +469,40 @@ void go_magic(int thread_count) {
     write_pretty(magics);
 }
 
-void seed_searcher(const Tbls& tbl, std::atomic<int>& glbl_min) {
+void seed_searcher(const Tbls& tbl, std::atomic<unsigned>& glbl_min) {
     Checker checker(tbl);
 
-    auto count_iters = [&checker](__uint128_t& state) {
+    auto count_calls = [&checker](__uint128_t state, unsigned min) {
+        uint64_t magic;
+        bool found[128]{0};
+        unsigned call_count = 0;
+
+        for(int count = 0; count < 128 && call_count < min; ) {
+            do magic = ran::sparse(state);
+            while(!magic);
+
+            for(int i = 0; i < 128; ++i) {
+                if(!found[i]) {
+                    ++call_count;
+                    if(checker.valid_magic(i % 64, i < 64, magic)) {
+                        ++count;
+                        found[i] = true;
+                    }
+                }
+            }
+        }
+
+        return call_count >= min ? ~0u : call_count;
+    };
+
+    auto next_seed = [&checker](__uint128_t& state) {
         __uint128_t ostate = state;
         uint64_t magic;
 
         int found_count[128]{0};
-        int iters = 0;
 
         for(int found = 0; found < 128; ) {
-            do magic = ran::sparse(state), ++iters;    
+            do magic = ran::sparse(state);    
             while(!magic);
             
             for(int i = 0; i < 128; ++i) {
@@ -492,13 +514,10 @@ void seed_searcher(const Tbls& tbl, std::atomic<int>& glbl_min) {
         }
 
         state = ostate;
-        int u = iters;
-
-        for(int j = 0; j < u; ++j) {
+        for(;;) {
             do {
                 ostate = state;
                 magic = ran::sparse(state);
-                --iters;  
             }
             while(!magic);
             
@@ -506,25 +525,25 @@ void seed_searcher(const Tbls& tbl, std::atomic<int>& glbl_min) {
                 if(checker.valid_magic(i % 64, i < 64, magic)) {
                     if(!--found_count[i]) {
                         state = ostate;
-                        return iters;
+                        return;
                     }
                 }
             }
         }
 
-        return -1;
+        return;
     };
 
     __uint128_t state = ran::seed();
-    int count = 1;
+    unsigned count = 1;
     while(!fexit()) {
-        for(int i = 0; i < count; ++i)
-            ran::next(state);
+        state = ran::seed();
 
-        count = count_iters(state);
+        next_seed(state);
+        count = count_calls(state, glbl_min.load(std::memory_order_relaxed));
         
-        if(count < glbl_min.load(std::memory_order_seq_cst)) {
-            glbl_min.store(count, std::memory_order_seq_cst);
+        if(count < glbl_min.load(std::memory_order_relaxed)) {
+            glbl_min.store(count, std::memory_order_relaxed);
 
             static std::mutex cout_mutex;
             std::lock_guard<std::mutex> lock(cout_mutex);
@@ -539,7 +558,7 @@ void seed_searcher(const Tbls& tbl, std::atomic<int>& glbl_min) {
 
 void go_seed(int thread_count) {
     const Tbls tbl;
-    std::atomic<int> glbl_min {INT32_MAX};
+    std::atomic<unsigned> glbl_min {INT32_MAX};
 
     std::cout << "starting seed search with " << thread_count << " threads...\n\n" << std::endl;
 
@@ -556,7 +575,8 @@ void go_seed(int thread_count) {
 int main() {
     std::signal(SIGINT, handle_sigint);
 
-    go_seed(3);
+    go_seed(1);
+
     
     std::cout << "exiting...\n";
     return 0;
