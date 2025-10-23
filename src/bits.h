@@ -4,6 +4,8 @@
 #include "types.h"
 
 #define SQR_BB(s) ( 1ull << (s) )
+#define SQR_FILE(s) ((s) % 8)
+#define SQR_RANK(s) ((s) / 8)
 
 #define GET_BIT(t, k) ( ((t) >> (k)) & 1 )
 #define SET_BIT(t, k) ( (t) | (1ull << (k)) )
