@@ -10,11 +10,6 @@
 #define CLR_BIT(t, k) ( (t) & ~(1ull << (k)) )
 #define ISO_LSB(t) ( (t) & -(t) )
 #define POP_LSB(t) ( (t) & ((t) - 1) )
-#define POP_LSB_IDX(t) ({               \
-        assert(t);                      \
-        i32 __i = __builtin_ctzll(t);   \
-        t = POP_LSB(t);                 \
-        __i; })
 
 void print_bb(bitboard);
 

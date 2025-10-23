@@ -1,5 +1,6 @@
 #include "bits.h"
 #include <stdio.h>
+#include <assert.h>
 
 void print_bb(const bitboard bb) {
     for(i32 r = 7; r > -1; --r) {
