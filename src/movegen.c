@@ -43,10 +43,15 @@ bitboard _gen_satts(const u32 sqr, const bool bsp, const bitboard blk) {
 
     bitboard atts = 0;
 
-    for(i32 dir = bsp ? NORTH_EAST : NORTH; dir <= (bsp ? SOUTH_WEST : WEST); ++dir)
-        for(i32 f = SQR_FILE(sqr), r = SQR_RANK(sqr); (u32)(f += df[dir]) < 8 && (u32)(r += dr[dir]) < 8; )
-            if((atts |= SQR_BB(8 * r + f)) & blk)
+    for(i32 dir = bsp ? NORTH_EAST : NORTH; dir <= (bsp ? SOUTH_WEST : WEST); ++dir) {
+        for(i32 f = SQR_FILE(sqr), r = SQR_RANK(sqr); (u32)(f += df[dir]) < 8 && (u32)(r += dr[dir]) < 8; ) {
+            bitboard s = SQR_BB(8 * r + f);
+            atts |= s;
+
+            if(s & blk)
                 break;
+        }
+    }
     
     return atts; 
 }
