@@ -36,8 +36,6 @@ enum direction {
 };
 
 bitboard _gen_satts(const u32 sqr, const bool bsp, const bitboard blk) {
-    assert(sqr < 64);
-
     const i32 df[8] = { 0,  1,  0, -1,  1, -1,  1, -1};
     const i32 dr[8] = { 1,  0, -1,  0,  1,  1, -1, -1};
 
