@@ -12,7 +12,7 @@ enum direction {
     SOUTH_WEST,
 };
 
-bitboard _gen_satts(const u32 sqr, const bool bsp, const bitboard blk) {
+bitboard gen_satts(const u32 sqr, const bool bsp, const bitboard blk) {
     const i32 df[8] = { 0,  1,  0, -1,  1, -1,  1, -1};
     const i32 dr[8] = { 1,  0, -1,  0,  1,  1, -1, -1};
 
@@ -32,11 +32,11 @@ bitboard _gen_satts(const u32 sqr, const bool bsp, const bitboard blk) {
 }
 
 bitboard gen_ratts(const u32 sqr, const bitboard blk) {
-    return _gen_satts(sqr, false, blk);
+    return gen_satts(sqr, false, blk);
 }
 
 bitboard gen_batts(const u32 sqr, const bitboard blk) {
-    return _gen_satts(sqr, true, blk);
+    return gen_satts(sqr, true, blk);
 }
 
 bitboard gen_patts(const u32 sqr, const bool w) {
@@ -75,7 +75,7 @@ bitboard gen_katts(const u32 sqr) {
 }
 
 bitboard gen_rmask(const u32 sqr, const bool bsp) {
-    bitboard m = _gen_satts(sqr, bsp, 0);
+    bitboard m = gen_satts(sqr, bsp, 0);
 
     if(bsp)
         return m & ~(FILE_AH | RANK_18);

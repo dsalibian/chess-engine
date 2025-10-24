@@ -3,6 +3,7 @@
 
 #include "types.h"
 
+bitboard gen_satts(const u32, const bool, const bitboard);
 bitboard gen_ratts(const u32, const bitboard);
 bitboard gen_batts(const u32, const bitboard);
 bitboard gen_patts(const u32, const bool);
