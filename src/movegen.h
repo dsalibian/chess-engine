@@ -9,4 +9,6 @@ bitboard gen_patts(const u32, const bool);
 bitboard gen_natts(const u32);
 bitboard gen_katts(const u32);
 
+bitboard gen_rmask(const u32, const bool);
+
 #endif

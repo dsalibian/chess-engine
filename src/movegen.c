@@ -1,29 +1,6 @@
 #include "movegen.h"
 #include "bits.h"
 
-#define NIGHTJMP_NW_W(s) ( SQR_FILE(s) > FILE_B ? SQR_BB(s) <<  6 : 0 )
-#define NIGHTJMP_NW_N(s) ( SQR_FILE(s) > FILE_A ? SQR_BB(s) << 15 : 0 )
-#define NIGHTJMP_NE_N(s) ( SQR_FILE(s) < FILE_H ? SQR_BB(s) << 17 : 0 )
-#define NIGHTJMP_NE_E(s) ( SQR_FILE(s) < FILE_G ? SQR_BB(s) << 10 : 0 )
-
-#define NIGHTJMP_SE_E(s) ( SQR_FILE(s) < FILE_G ? SQR_BB(s) >>  6 : 0 )
-#define NIGHTJMP_SE_S(s) ( SQR_FILE(s) < FILE_H ? SQR_BB(s) >> 15 : 0 )
-#define NIGHTJMP_SW_S(s) ( SQR_FILE(s) > FILE_A ? SQR_BB(s) >> 17 : 0 )
-#define NIGHTJMP_SW_W(s) ( SQR_FILE(s) > FILE_B ? SQR_BB(s) >> 10 : 0 )
-
-#define KNGMV_N(s) ( SQR_BB(s) << 8)
-#define KNGMV_S(s) ( SQR_BB(s) >> 8)
-#define KNGMV_E(s) ( SQR_FILE(s) < FILE_H ? SQR_BB(s) << 1 : 0 )
-#define KNGMV_W(s) ( SQR_FILE(s) > FILE_A ? SQR_BB(s) >> 1 : 0 )
-
-#define KNGMV_NE(s) ( SQR_FILE(s) < FILE_H ? SQR_BB(s) << 9 : 0 )
-#define KNGMV_NW(s) ( SQR_FILE(s) > FILE_A ? SQR_BB(s) << 7 : 0 )
-#define KNGMV_SE(s) ( SQR_FILE(s) < FILE_H ? SQR_BB(s) >> 7 : 0 )
-#define KNGMV_SW(s) ( SQR_FILE(s) > FILE_A ? SQR_BB(s) >> 9 : 0 )
-
-#define PWNATTS_W(s) ( KNGMV_NE(s) | KNGMV_NW(s) )
-#define PWNATTS_B(s) ( KNGMV_SE(s) | KNGMV_SW(s) )
-
 enum direction {
     NORTH,
     EAST,
@@ -63,20 +40,36 @@ bitboard gen_batts(const u32 sqr, const bitboard blk) {
 }
 
 bitboard gen_patts(const u32 sqr, const bool w) {
-    return w ? PWNATTS_W(sqr) : PWNATTS_B(sqr);
+    const bitboard sqr_bb = SQR_BB(sqr);
+    const u32 f           = SQR_FILE(sqr);
+    bitboard atts         = 0;
+
+    if(f > 0) atts |= w ? sqr_bb << 7 : sqr_bb >> 9;
+    if(f < 7) atts |= w ? sqr_bb << 9 : sqr_bb >> 7;
+
+    return atts;
 }
 
 bitboard gen_natts(const u32 sqr) {
-    return 
-        NIGHTJMP_NW_N(sqr) | NIGHTJMP_SW_S(sqr) |
-        NIGHTJMP_NW_W(sqr) | NIGHTJMP_SW_W(sqr) |
-        NIGHTJMP_NE_E(sqr) | NIGHTJMP_SE_E(sqr) |
-        NIGHTJMP_NE_N(sqr) | NIGHTJMP_SE_S(sqr);
+    const bitboard sqr_bb = SQR_BB(sqr);
+    const u32 f           = SQR_FILE(sqr);
+    bitboard atts         = 0;
+
+    if(f > 0) atts |= (sqr_bb << 15) | (sqr_bb >> 17);
+    if(f > 1) atts |= (sqr_bb << 6 ) | (sqr_bb >> 10);
+    if(f < 6) atts |= (sqr_bb << 10) | (sqr_bb >> 6 );
+    if(f < 7) atts |= (sqr_bb << 17) | (sqr_bb >> 15);
+
+    return atts;
 }
 
 bitboard gen_katts(const u32 sqr) {
-    return 
-        KNGMV_NW(sqr) | KNGMV_N(sqr) | KNGMV_NE(sqr) |
-        KNGMV_W (sqr) |                KNGMV_E (sqr) |
-        KNGMV_SW(sqr) | KNGMV_S(sqr) | KNGMV_SE(sqr);
+    const bitboard sqr_bb = SQR_BB(sqr);
+    const u32 f           = SQR_FILE(sqr);
+    bitboard atts         = (sqr_bb << 8) | (sqr_bb >> 8);
+
+    if(f < 7) atts |= (sqr_bb << 1) | (sqr_bb << 9) | (sqr_bb >> 7);
+    if(f > 0) atts |= (sqr_bb >> 1) | (sqr_bb >> 9) | (sqr_bb << 7);
+
+    return atts;
 }
