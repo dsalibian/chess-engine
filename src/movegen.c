@@ -73,3 +73,21 @@ bitboard gen_katts(const u32 sqr) {
 
     return atts;
 }
+
+bitboard gen_rmask(const u32 sqr, const bool bsp) {
+    bitboard m = _gen_satts(sqr, bsp, 0);
+
+    if(bsp)
+        return m & ~(FILE_AH | RANK_18);
+
+    const u32 f = SQR_FILE(sqr);
+    const u32 r = SQR_RANK(sqr);
+
+    if(f > 0) m &= ~FILE_A;
+    if(f < 7) m &= ~FILE_H;
+
+    if(r > 0) m &= ~RANK_1;
+    if(r < 7) m &= ~RANK_8;
+
+    return m;
+}
