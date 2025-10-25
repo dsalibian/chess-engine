@@ -10,5 +10,6 @@ void print_bb(const bitboard bb) {
 
         printf("\n");
     }
+
     printf("\n     a b c d e f g h\n\n");
 }

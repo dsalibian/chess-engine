@@ -47,7 +47,7 @@ struct magic magic_make(const u32 sqr, const bool bsp, u64* s) {
         u64 magic = xorshift(s) & xorshift(s) & xorshift(s);
 
         for(u32 j = 0; j < u; ++j) {
-            u64 idx = MAGIC_HASH(magic, occupancy_masks[j], 64u - popcnt);
+            u64 idx = MAGIC_HASH(magic, occupancy_masks[j], popcnt);
             assert(idx < u);
 
             if(iter[idx] != i) {
@@ -73,7 +73,9 @@ void magics_init(struct magic* rk, struct magic* bsp) {
 }
 
 bitboard magic_moves_bb(const struct magic* magic, const bitboard all, const bitboard us){
-    const u64 i = MAGIC_HASH(magic->magic, all & magic->rmask, 64u - POPCNT(magic->rmask));
+    assert(magic);
+
+    const u64 i = MAGIC_HASH(magic->magic, all & magic->rmask, POPCNT(magic->rmask));
     assert(i < 1u << POPCNT(magic->rmask));
 
     return magic->atts[i] & ~us;
