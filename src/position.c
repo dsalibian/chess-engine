@@ -80,12 +80,12 @@ void parse_fen(struct position* pos, const char* fen) {
     fen += 2;
 
     // castling
-    pos->oo[0] = pos->oo[1] = pos->ooo[0] = pos->ooo[1] = false;
+    pos->castle_k[0] = pos->castle_k[1] = pos->castle_q[0] = pos->castle_q[1] = false;
     for(; *fen != ' '; ++fen) {
-        if(*fen == 'K') pos->oo [TURN_W] = true;
-        if(*fen == 'k') pos->oo [TURN_B] = true;
-        if(*fen == 'Q') pos->ooo[TURN_W] = true;
-        if(*fen == 'q') pos->ooo[TURN_B] = true;
+        if(*fen == 'K') pos->castle_k[TURN_W] = true;
+        if(*fen == 'k') pos->castle_k[TURN_B] = true;
+        if(*fen == 'Q') pos->castle_q[TURN_W] = true;
+        if(*fen == 'q') pos->castle_q[TURN_B] = true;
     }
     ++fen;
 
@@ -93,7 +93,8 @@ void parse_fen(struct position* pos, const char* fen) {
     if(*fen == '-')
         pos->en_passant_target = 0;
     else {
-        pos->en_passant_target = (u32)((*(fen + 1) - '0' - 1) * 8 + *fen - 'a');
+        pos->en_passant_target = (u32)((*(fen + 1) - '0' - 1) * 8 + (*fen - 'a'));
+
         assert(SQR_RANK(pos->en_passant_target) == (pos->turn == TURN_W ? 5 : 2));
         ++fen;
     }
@@ -130,8 +131,20 @@ void dbgprint_pos(const struct position* pos) {
     else
         printf("ep:     none\n");
 
-    printf("oo_w:   %c\n",   pos->oo [TURN_W] ? 'y' : 'n');
-    printf("ooo_w:  %c\n",   pos->ooo[TURN_W] ? 'y' : 'n');
-    printf("oo_b:   %c\n",   pos->oo [TURN_B] ? 'y' : 'n');
-    printf("ooo_b:  %c\n\n", pos->ooo[TURN_B] ? 'y' : 'n');
+    printf("oo_w:   %c\n",   pos->castle_k[TURN_W] ? 'y' : 'n');
+    printf("ooo_w:  %c\n",   pos->castle_q[TURN_W] ? 'y' : 'n');
+    printf("oo_b:   %c\n",   pos->castle_k[TURN_B] ? 'y' : 'n');
+    printf("ooo_b:  %c\n\n", pos->castle_q[TURN_B] ? 'y' : 'n');
+}
+
+bool position_eq(const struct position* a, const struct position* b) {
+    return 
+        !memcmp(a->bbs, b->bbs, 2 * 7 * sizeof(bitboard)) && a->bb_all == b->bb_all &&
+        !memcmp(a->occupancy, b->occupancy, 64 * sizeof(u32)) && 
+        a->en_passant_target == b->en_passant_target &&
+        a->hmoves == b->hmoves &&
+        a->fmoves == b->fmoves &&
+        !memcmp(a->castle_k, b->castle_k, 2) &&
+        !memcmp(a->castle_q, b->castle_q, 2) &&
+        a->turn == b->turn;
 }

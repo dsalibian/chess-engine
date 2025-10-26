@@ -23,12 +23,14 @@ struct position {
 
     u32 en_passant_target;
     u32 hmoves, fmoves;
-    bool oo[2], ooo[2];
+    bool castle_k[2], castle_q[2];
     bool turn;
 };
 
 void parse_fen(struct position*, const char*);
 void startpos(struct position*);
 void dbgprint_pos(const struct position*);
+
+bool position_eq(const struct position*, const struct position*);
 
 #endif

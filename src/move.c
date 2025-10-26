@@ -12,8 +12,10 @@ char mv_promochar(const move m) {
 void dbgprint_mv(const move m, const u32* occupancy, const bool println) {
     assert(occupancy);
 
-    if(MV_ISCASTLE(m)) {
-        printf(MV_GETCODE(m) == MCODE_CASTLE_K ? "oo" : "ooo");
+    const u32 code = MV_GETCODE(m);
+
+    if(MCODE_ISCASTLE(code)) {
+        printf(code == MCODE_CASTLE_K ? "oo" : "ooo");
 
         goto println;
     } 
@@ -27,13 +29,13 @@ void dbgprint_mv(const move m, const u32* occupancy, const bool println) {
     printf("%c%c%c%c%c",
             'a' + SQR_FILE(from),
             '1' + SQR_RANK(from),
-            MV_ISCAP(m) ? 'x' : '-',
+            MCODE_ISCAP(code) ? 'x' : '-',
             'a' + SQR_FILE(to),
             '1' + SQR_RANK(to));
 
-    if(MV_ISPROMO(m))
+    if(MCODE_ISPROMO(code))
         printf("=%c", mv_promochar(m));
-    else if(MV_ISENPASSANT(m))
+    else if(code == MCODE_EN_PASSANT)
         printf(" ep");
 
     println:;
