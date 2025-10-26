@@ -9,7 +9,7 @@ char mv_promochar(const move m) {
     return arr[(MV_GETCODE(m) & ~MCODE_FPROMO)];
 }
 
-void mv_print_dbg(const move m, const u32* occupancy, const bool println) {
+void dbgprint_mv(const move m, const u32* occupancy, const bool println) {
     assert(occupancy);
 
     if(MV_ISCASTLE(m)) {

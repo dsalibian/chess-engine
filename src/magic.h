@@ -12,7 +12,7 @@ struct magic {
 };
 
 struct magic magic_make(const u32, const bool, u64*);
-void magics_init(struct magic*, struct magic*);
+void magic_init(struct magic*, struct magic*);
 
 bitboard magic_moves_bb(const struct magic*, const bitboard, const bitboard);
 

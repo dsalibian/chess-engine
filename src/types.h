@@ -77,9 +77,4 @@ enum piece_type {
     TYPE_NONE,
 };
 
-#define OCCUPANCY_ISWHITE(o) (o < OCCUPANCY_W_PAWN)
-#define OCCUPANCY_ISBLACK(o) (o > OCCUPANCY_W_KING && o < OCCUPANCY_EMPTY)
-#define OCCUPANCY_TYPE(o) (o == OCCUPANCY_EMPTY ? TYPE_NONE : (o - (o > OCCUPANCY_W_KING ? OCCUPANCY_B_PAWN : 0)))
-
-
 #endif

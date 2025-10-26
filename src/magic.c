@@ -62,7 +62,7 @@ struct magic magic_make(const u32 sqr, const bool bsp, u64* s) {
     }
 }
 
-void magics_init(struct magic* rk, struct magic* bsp) {
+void magic_init(struct magic* rk, struct magic* bsp) {
     u64 bsp_s = 0x6f67ea16a95f0393ull;
     u64 rk_s  = 0x9671405820c301a7ull;
 

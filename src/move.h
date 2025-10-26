@@ -32,6 +32,6 @@
 
 typedef u16 move;
 
-void mv_print_dbg(const move, const u32*, const bool);
+void dbgprint_mv(const move, const u32*, const bool);
 
 #endif

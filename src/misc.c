@@ -28,22 +28,3 @@ void print_occupancy(const u32* occupancy) {
 
     printf("\n     a b c d e f g h\n\n");
 }
-
-void build_occupancy(u32* occupancy, const bitboard* bbs) {
-    assert(occupancy);
-    assert(bbs);
-
-    for(u32 s = 0; s < 64; ++s)
-        occupancy[s] = OCCUPANCY_EMPTY;
-
-    for(u32 i = 0; i < OCCUPANCY_EMPTY; ++i) {
-        bitboard bb = bbs[i];
-
-        for(; bb; bb = POP_LSB(bb)) {
-            u32 j = TZCNT(bb);
-            assert(occupancy[j] == OCCUPANCY_EMPTY);
-
-            occupancy[j] = i;
-        }
-    }
-}

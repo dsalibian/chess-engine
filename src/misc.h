@@ -3,9 +3,11 @@
 
 #include "types.h"
 
+#define OCCUPANCY_ISWHITE(o) ((u32)o < OCCUPANCY_B_PAWN)
+#define OCCUPANCY_ISBLACK(o) (o > OCCUPANCY_W_KING && o < OCCUPANCY_EMPTY)
+#define OCCUPANCY_TYPE(o) (o == OCCUPANCY_EMPTY ? TYPE_NONE : (o - (o > OCCUPANCY_W_KING ? OCCUPANCY_B_PAWN : 0)))
+
 char occupancy_char(const u32);
 void print_occupancy(const u32*); 
-
-void build_occupancy(u32*, const bitboard*);
 
 #endif
