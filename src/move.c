@@ -42,3 +42,26 @@ void dbgprint_mv(const move m, const u32* occupancy, const bool println) {
     if(println)
         printf("\n");
 }
+
+
+struct move_stack stack_new() {
+    return (struct move_stack){.size = 0};
+}
+
+move stack_pop(struct move_stack* ms) {
+    assert(ms->size);
+    return ms->ls[--(ms->size)];
+}
+
+void stack_push(struct move_stack* ms, const move m) {
+    ms->ls[(ms->size)++] = m;
+}
+
+void stack_print(struct move_stack* ms, const u32* occupancy) {
+    const size_t u = ms->size;
+
+    for(size_t i = 0; i < u; ++i) {
+        printf("%3lu: ", i);
+        dbgprint_mv(ms->ls[i], occupancy, true);
+    }
+}

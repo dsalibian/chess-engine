@@ -148,8 +148,6 @@ void move_make(struct position* pos, const move m) {
     }
 }
 
-
-#include <stdio.h>
 void move_unmake(struct position* pos, const move m, const struct umake_dat* umake) {
     u32* occupancy = pos->occupancy;
     bool* turn     = &pos->turn;

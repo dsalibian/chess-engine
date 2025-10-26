@@ -1,5 +1,6 @@
 #include "movegen.h"
 #include "bits.h"
+#include "position.h"
 
 enum direction {
     NORTH,
@@ -90,4 +91,28 @@ bitboard gen_rmask(const u32 sqr, const bool bsp) {
     if(r < 7) m &= ~RANK_8;
 
     return m;
+}
+
+
+
+
+
+struct movegen_tbl gen_mg_tbl() {
+    struct movegen_tbl tbl;
+
+    u64 bsp_s = 0x6f67ea16a95f0393ull;
+    u64 rk_s  = 0x9671405820c301a7ull;
+
+    for(u32 s = 0; s < 64; ++s) {
+        tbl.bsp_magic[s]  = magic_make(s, true,  &bsp_s);        
+        tbl.rk_magic[s]   = magic_make(s, false, &rk_s);        
+
+        tbl.patts[TURN_W][s] = gen_patts(s, TURN_W);
+        tbl.patts[TURN_B][s] = gen_patts(s, TURN_B);
+
+        tbl.natts[s] = gen_natts(s);
+        tbl.katts[s] = gen_katts(s);
+    }
+
+    return tbl;
 }

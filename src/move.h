@@ -29,8 +29,22 @@
 
 #define MV_ENCODE(code, to, from)   ((code) | ((to) << 4) | ((from) << 10))
 
+
+
 typedef u16 move;
 
 void dbgprint_mv(const move, const u32*, const bool);
+
+
+
+struct move_stack {
+    move ls[255];
+    size_t size;
+};
+
+struct move_stack stack_new();
+move stack_pop(struct move_stack*);
+void stack_push(struct move_stack*, const move);
+void stack_print(struct move_stack*, const u32*);
 
 #endif

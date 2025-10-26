@@ -62,16 +62,6 @@ struct magic magic_make(const u32 sqr, const bool bsp, u64* s) {
     }
 }
 
-void magic_init(struct magic* rk, struct magic* bsp) {
-    u64 bsp_s = 0x6f67ea16a95f0393ull;
-    u64 rk_s  = 0x9671405820c301a7ull;
-
-    for(u32 s = 0; s < 64; ++s) {
-        bsp[s] = magic_make(s, true,  &bsp_s);        
-        rk[s]  = magic_make(s, false, &rk_s);        
-    }
-}
-
 bitboard magic_moves_bb(const struct magic* magic, const bitboard all, const bitboard us){
     assert(magic);
 

@@ -11,7 +11,7 @@
 
 
 int main(int argc, char** argv) {
-
+    struct movegen_tbl tbl = gen_mg_tbl(); 
 
     return 0;
 }

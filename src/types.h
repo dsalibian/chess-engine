@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include <inttypes.h>
+#include <stddef.h>
 #include <stdbool.h>
 #include <assert.h>
 
