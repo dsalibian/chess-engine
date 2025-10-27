@@ -37,7 +37,7 @@ void perft(const char* fen, u32 depth) {
 
     struct position original;
     if(fen)
-        parse_fen(&original, "rnbq1bnr/ppppk1pp/5p2/4p3/1Q6/2PP4/PP2PPPP/RNB1KBNR b KQ - 2 4");
+        parse_fen(&original, fen);
     else
         startpos(&original);
 
