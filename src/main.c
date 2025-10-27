@@ -6,12 +6,16 @@
 #include "move.h"
 #include "position.h"
 #include "movemake.h"
+#include "perft.h"
 #include <stdio.h>
 #include <string.h>
 
 
+
+
 int main(int argc, char** argv) {
-    struct movegen_tbl tbl = gen_mg_tbl(); 
+
+    perft(NULL, 8);
 
     return 0;
 }
