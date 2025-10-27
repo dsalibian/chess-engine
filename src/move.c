@@ -6,7 +6,7 @@
 char mv_promochar(const move m) {
     static const char arr[] = {'n', 'b', 'r', 'q'};
 
-    return arr[(MV_GETCODE(m) & ~MCODE_FPROMO)];
+    return arr[MCODE_PROMOTYPE(MV_GETCODE(m)) - 1];
 }
 
 void dbgprint_mv(const move m, const u32* occupancy, const bool println) {
@@ -43,6 +43,23 @@ void dbgprint_mv(const move m, const u32* occupancy, const bool println) {
         printf("\n");
 }
 
+void uciprint_mv(const move m, const bool println) {
+    const u32 code = MV_GETCODE(m); 
+    const u32 from = MV_GETFROM(m); 
+    const u32 to   = MV_GETTO(m); 
+
+    printf("%c%c%c%c", 
+            'a' + SQR_FILE(from),
+            '1' + SQR_RANK(from),
+            'a' + SQR_FILE(to),
+            '1' + SQR_RANK(to));
+
+    if(MCODE_ISPROMO(code))
+        printf("%c", mv_promochar(m));
+
+    if(println)
+        printf("\n");
+}
 
 struct move_stack stack_new() {
     return (struct move_stack){.size = 0};

@@ -3,7 +3,7 @@
 
 #include "types.h"
 
-#define MAGIC_HASH(magic, relevant_occupancy, popcnt) (((magic) * (relevant_occupancy)) >> (64u - popcnt))
+#define MAGIC_HASH(magic, relevant_occupancy_bb, popcnt) (((magic) * (relevant_occupancy_bb)) >> (64u - popcnt))
 
 struct magic {
     u64 magic;

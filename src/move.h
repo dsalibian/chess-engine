@@ -21,7 +21,7 @@
 #define MCODE_ISCASTLE(c)           ((c) == MCODE_CASTLE_K || (c) == MCODE_CASTLE_Q)
 #define MCODE_ISPROMO(c)            ((c) & MCODE_FPROMO)
 #define MCODE_ISCAP(c)              ((c) & MCODE_FCAP)
-#define MCODE_PROMOTYPE(c)          ((c & ~MCODE_FPROMO) + TYPE_NIGHT)
+#define MCODE_PROMOTYPE(c)          (((c) & ~(MCODE_FPROMO | MCODE_FCAP)) + TYPE_NIGHT)
 
 #define MV_GETCODE(m)               ((m) & 0xfu)
 #define MV_GETTO(m)                 (((m) >> 4) & 0x3fu)
@@ -34,6 +34,7 @@
 typedef u16 move;
 
 void dbgprint_mv(const move, const u32*, const bool);
+void uciprint_mv(const move, const bool);
 
 
 

@@ -62,9 +62,7 @@ struct magic magic_make(const u32 sqr, const bool bsp, u64* s) {
     }
 }
 
-bitboard magic_moves_bb(const struct magic* magic, const bitboard all, const bitboard us){
-    assert(magic);
-
+bitboard magic_moves_bb(const struct magic* magic, const bitboard all, const bitboard us) {
     const u64 i = MAGIC_HASH(magic->magic, all & magic->rmask, POPCNT(magic->rmask));
     assert(i < 1u << POPCNT(magic->rmask));
 
