@@ -6,7 +6,7 @@
 #include "movemake.h"
 #include <stdio.h>
 
-u64 go(const struct atts_tbl* tbl, const struct position* pos, const u32 depth, const u32 u) {
+u64 go(const struct atts_tbl* tbl, struct position* pos, const u32 depth, const u32 u) {
     if(depth == u)
         return 1;
 
@@ -14,12 +14,13 @@ u64 go(const struct atts_tbl* tbl, const struct position* pos, const u32 depth, 
 
     struct move_stack ms = stack_new();
     stack_push_moves(&ms, tbl, pos);
-    
+
     for(; ms.size; ) {
         struct position cpy = *pos;
 
         const move m = stack_pop(&ms);
         move_make(tbl, &cpy, m);
+
         if(!sqr_attd_opps(
                     tbl, 
                     TZCNT(cpy.bbs[!cpy.turn][IDX_KING]), 

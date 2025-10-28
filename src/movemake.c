@@ -3,6 +3,8 @@
 #include "misc.h"
 #include "move.h"
 #include "types.h"
+#include <string.h>
+#include <stdio.h>
 
 void move_make(const struct atts_tbl* tbl, struct position* pos, const move m) {
     u32* occupancy = pos->occupancy;
@@ -96,7 +98,7 @@ void move_make(const struct atts_tbl* tbl, struct position* pos, const move m) {
         }
 
         else if(code == MCODE_EN_PASSANT) {
-            const u32 cap = *turn ? to - 8 : to + 8;
+            const bitboard cap = *turn ? to - 8 : to + 8;
 
             assert(SQR_RANK(cap) == (*turn ? 4 : 3));
 
