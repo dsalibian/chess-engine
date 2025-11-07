@@ -6,8 +6,9 @@
 #include <string.h>
 #include <stdio.h>
 
+
 void move_make(const struct atts_tbl* tbl, struct position* pos, const move m) {
-    u32* occupancy = pos->occupancy;
+    u8* board      = pos->board;
     bool* turn     = &pos->turn;
 
     bitboard* us   = pos->bbs[*turn];
@@ -18,14 +19,22 @@ void move_make(const struct atts_tbl* tbl, struct position* pos, const move m) {
     const u32 from = MV_GETFROM(m);
     const u32 to   = MV_GETTO(m);
 
-    const u32 moved_type = OCCUPANCY_TYPE(occupancy[from]);
-    const u32 cap_type   = OCCUPANCY_TYPE(occupancy[to]);
+    const u32 moved_type = board[from];
+    const u32 cap_type   = board[to];
     
     // bitboards
     {
         const bitboard from_bb = SQR_BB(from);
         const bitboard to_bb   = SQR_BB(to);
         const bitboard move_bb = from_bb | to_bb;
+
+        if(!(us[IDX_ALL] & from_bb)) {
+            printf("\n");
+            pos_print(pos);
+            uciprint_mv(m, true);
+
+            fflush(stdout);
+        }
 
         assert(us[IDX_ALL] & from_bb);
         assert(!(us[IDX_ALL] & to_bb));
@@ -63,7 +72,7 @@ void move_make(const struct atts_tbl* tbl, struct position* pos, const move m) {
                 opps[IDX_PAWN] ^= cap;
                 opps[IDX_ALL]  ^= cap;
             } else {
-                assert(cap_type < TYPE_NONE);
+                assert(cap_type < TYPE_EMPTY);
                 assert(opps[IDX_ALL] & to_bb);
 
                 opps[cap_type] ^= to_bb;
@@ -76,8 +85,8 @@ void move_make(const struct atts_tbl* tbl, struct position* pos, const move m) {
 
     // occupancy 
     {
-        occupancy[to]   = occupancy[from];
-        occupancy[from] = OCCUPANCY_EMPTY;
+        board[to]   = board[from];
+        board[from] = TYPE_EMPTY;
 
         if(MCODE_ISCASTLE(code)) {
             const bool k = code == MCODE_CASTLE_K;
@@ -85,16 +94,16 @@ void move_make(const struct atts_tbl* tbl, struct position* pos, const move m) {
             const u32 rk_src  = tbl->castle_r_from[*turn][!k];
             const u32 rk_dest = tbl->castle_r_to  [*turn][!k];
             
-            assert(occupancy[rk_src] == (*turn ? OCCUPANCY_W_ROOK : OCCUPANCY_B_ROOK));
+            assert(board[rk_src] == TYPE_ROOK);
 
-            occupancy[rk_dest] = occupancy[rk_src];
-            occupancy[rk_src]  = OCCUPANCY_EMPTY;
+            board[rk_dest] = board[rk_src];
+            board[rk_src]  = TYPE_EMPTY;
         }
 
         else if(MCODE_ISPROMO(code)) {
-            assert(occupancy[to] == (*turn ? OCCUPANCY_W_PAWN : OCCUPANCY_B_PAWN));
+            assert(board[to] == TYPE_PAWN);
 
-            occupancy[to] = MCODE_PROMOTYPE(code);
+            board[to] = (u8)MCODE_PROMOTYPE(code);
         }
 
         else if(code == MCODE_EN_PASSANT) {
@@ -102,7 +111,7 @@ void move_make(const struct atts_tbl* tbl, struct position* pos, const move m) {
 
             assert(SQR_RANK(cap) == (*turn ? 4 : 3));
 
-            occupancy[cap] = OCCUPANCY_EMPTY;
+            board[cap] = TYPE_EMPTY;
         }
     }
 

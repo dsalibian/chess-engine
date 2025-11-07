@@ -1,10 +1,11 @@
 #include "eval.h"
 #include "bits.h"
+#include "misc.h"
+#include "movemake.h"
 #include <stdio.h>
 
-
-i32 eval(const struct position* pos) {
-    const static i8 ptbl[64] = 
+i32 eval(const struct atts_tbl* atts_tbl, const struct position* pos) {
+    static const i8 ptbl[64] = 
     {
         0,  0,  0,  0,  0,  0,  0,  0,
         50, 50, 50, 50, 50, 50, 50, 50,
@@ -16,7 +17,7 @@ i32 eval(const struct position* pos) {
         0,  0,  0,  0,  0,  0,  0,  0
     };
 
-    const static i8 ntbl[64] = 
+    static const i8 ntbl[64] = 
     {
         -50,-40,-30,-30,-30,-30,-40,-50,
         -40,-20,  0,  0,  0,  0,-20,-40,
@@ -28,7 +29,7 @@ i32 eval(const struct position* pos) {
         -50,-40,-30,-30,-30,-30,-40,-50,
     };
 
-    const static i8 btbl[64] = 
+    static const i8 btbl[64] = 
     {
         -20,-10,-10,-10,-10,-10,-10,-20,
         -10,  0,  0,  0,  0,  0,  0,-10,
@@ -40,7 +41,7 @@ i32 eval(const struct position* pos) {
         -20,-10,-10,-10,-10,-10,-10,-20,
     };
 
-    const static i8 rtbl[64] = 
+    static const i8 rtbl[64] = 
     {
          0,  0,  0,  0,  0,  0,  0,  0,
          5, 10, 10, 10, 10, 10, 10,  5,
@@ -52,7 +53,7 @@ i32 eval(const struct position* pos) {
          0,  0,  0,  5,  5,  0,  0,  0
     };
 
-    const static i8 qtbl[64] = 
+    static const i8 qtbl[64] = 
     {
         -20,-10,-10, -5, -5,-10,-10,-20,
         -10,  0,  0,  0,  0,  0,  0,-10,
@@ -64,19 +65,20 @@ i32 eval(const struct position* pos) {
         -20,-10,-10, -5, -5,-10,-10,-20
     };
 
-    const static i8 ktbl[64] = 
+    static const i8 ktbl[64] = 
     {
-        -50,-40,-30,-30,-30,-30,-40,-50,
-        -40,-20,  0,  0,  0,  0,-20,-40,
-        -30,  0, 10, 15, 15, 10,  0,-30,
-        -30,  5, 15, 20, 20, 15,  5,-30,
-        -30,  0, 15, 20, 20, 15,  0,-30,
-        -30,  5, 10, 15, 15, 10,  5,-30,
-        -40,-20,  0,  5,  5,  0,-20,-40,
-        -50,-40,-30,-30,-30,-30,-40,-50,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -30,-40,-40,-50,-50,-40,-40,-30,
+        -20,-30,-30,-40,-40,-30,-30,-20,
+        -10,-20,-20,-20,-20,-20,-20,-10,
+        20, 20,  0,  0,  0,  0, 20, 20,
+        20, 30, 10,  0,  0, 10, 30, 20
+
     };
 
-    const static i8 ketbl[64] = 
+    static const i8 ketbl[64] = 
     {
         -50,-40,-30,-20,-20,-30,-40,-50,
         -30,-20,-10,  0,  0,-10,-20,-30,
@@ -88,29 +90,18 @@ i32 eval(const struct position* pos) {
         -50,-30,-30,-30,-30,-30,-30,-50
     };
 
-    const static i8* tbl[6] = {ptbl, ntbl, btbl, rtbl, qtbl};
-
-    const static i32 baseval[6] = 
-    {
-        100,
-        320,
-        330,
-        500,
-        9000,
-        20000
-    };
-
-    const bool endgame = !(pos->bbs[0][IDX_QUEEN] | pos->bbs[1][IDX_QUEEN]);
+    static const i8* tbl[6] = {ptbl, ntbl, btbl, rtbl, qtbl, ktbl};
+    static const i32 baseval[6] = {100, 320, 330, 500, 9000, 20000};
 
     i32 v = 0;
 
-    for(i32 i = 0; i < IDX_KING; ++i) {
+    for(i32 i = 0; i <= IDX_KING; ++i) {
         bitboard bb = pos->bbs[TURN_W][i];
 
         for(; bb; bb = POP_LSB(bb)) {
             u32 s = TZCNT(bb);
 
-            v += baseval[i] * tbl[i][s];
+            v += baseval[i] + tbl[i][s];
         }
 
         bb = pos->bbs[TURN_B][i];
@@ -118,15 +109,10 @@ i32 eval(const struct position* pos) {
         for(; bb; bb = POP_LSB(bb)) {
             u32 s = 63 - TZCNT(bb);
 
-            v -= baseval[i] * tbl[i][s];
+            v -= baseval[i] + tbl[i][s];
         }
     }    
 
-    const u32 kpos_w = TZCNT(pos->bbs[TURN_W][IDX_KING]);
-    const u32 kpos_b = 63 - TZCNT(pos->bbs[TURN_B][IDX_KING]);
-
-    v += baseval[IDX_KING] + (endgame ? ketbl[kpos_w] : ktbl[kpos_w]);
-    v -= baseval[IDX_KING] + (endgame ? ketbl[kpos_b] : ktbl[kpos_b]);
-
-    return pos->turn ? v : -v;
+    static i8 m[2] = {-1, 1};
+    return v * m[pos->turn];
 }

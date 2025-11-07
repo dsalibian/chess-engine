@@ -27,13 +27,12 @@
 #define MV_GETTO(m)                 (((m) >> 4) & 0x3fu)
 #define MV_GETFROM(m)               ((m) >> 10)
 
-#define MV_ENCODE(code, to, from)   ((code) | ((to) << 4) | ((from) << 10))
+#define MV_ENCODE(code, to, from)   ((move)((code) | ((to) << 4) | ((from) << 10)))
 
 
 
 typedef u16 move;
 
-void dbgprint_mv(const move, const u32*, const bool);
 void uciprint_mv(const move, const bool);
 
 
@@ -46,6 +45,6 @@ struct move_stack {
 struct move_stack stack_new();
 move stack_pop(struct move_stack*);
 void stack_push(struct move_stack*, const move);
-void stack_print(struct move_stack*, const u32*);
+void stack_print(struct move_stack*);
 
 #endif

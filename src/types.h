@@ -38,6 +38,8 @@ typedef u64 bitboard;
 #define RANK_8  0xff00000000000000ull
 #define RANK_18 0xff000000000000ffull
 
+#define BOARD_OCCUPANCY(board, w_bb, sqr) ((board)[sqr] + ((SQR_BB(sqr) & (w_bb)) ? 0 : OCCUPANCY_B_PAWN))
+
 enum square {
     A1, B1, C1, D1, E1, F1, G1, H1,
     A2, B2, C2, D2, E2, F2, G2, H2,
@@ -75,7 +77,7 @@ enum piece_type {
     TYPE_QUEEN,
     TYPE_KING,
 
-    TYPE_NONE,
+    TYPE_EMPTY,
 };
 
 #endif

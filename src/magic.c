@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-bitboard nth_occupancy_mask(bitboard rmask, const u32 n) {
+static bitboard nth_occupancy_mask(bitboard rmask, const u32 n) {
     const u32 popcnt = POPCNT(rmask);
     bitboard occupancy  = 0;
 
@@ -27,6 +27,7 @@ u64 xorshift(u64* state) {
     return *state;
 }
 
+u64 c = 0;
 struct magic magic_make(const u32 sqr, const bool bsp, u64* s) {
     const bitboard rmask = gen_rmask(sqr, bsp);
     const u32 popcnt     = POPCNT(rmask);
@@ -49,6 +50,7 @@ struct magic magic_make(const u32 sqr, const bool bsp, u64* s) {
         for(u32 j = 0; j < u; ++j) {
             u64 idx = MAGIC_HASH(magic, occupancy_masks[j], popcnt);
             assert(idx < u);
+            ++c;
 
             if(iter[idx] != i) {
                 iter[idx] = i;

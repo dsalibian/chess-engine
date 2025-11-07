@@ -2,6 +2,7 @@
 #define POSITION_H
 
 #include "types.h"
+#include "move.h"
 
 #define TURN_B false
 #define TURN_W true
@@ -19,18 +20,18 @@ enum bb_type_idx {
 
 struct position {
     bitboard bbs[2][7], bb_all;
-    u32 occupancy[64];
+    u8 board[64];
 
-    u32 en_passant_target;
     u32 hmoves, fmoves;
+    u8 en_passant_target;
     bool castle_k[2], castle_q[2];
     bool turn;
 };
 
-void parse_fen(struct position*, const char*);
-void startpos(struct position*);
-void dbgprint_pos(const struct position*);
+struct atts_tbl;
 
-bool position_eq(const struct position*, const struct position*);
+void pos_fen(struct position*, const char*);
+void pos_startpos(struct position*);
+void pos_print(const struct position*);
 
 #endif

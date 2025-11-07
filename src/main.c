@@ -7,15 +7,18 @@
 #include "position.h"
 #include "movemake.h"
 #include "perft.h"
+#include "eval.h"
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 
 
 
 
 int main(int argc, char** argv) {
 
-    perft(NULL, 8);
+    perft(NULL, 7);
+
 
     return 0;
 }
