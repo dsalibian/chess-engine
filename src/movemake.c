@@ -28,14 +28,6 @@ void move_make(const struct atts_tbl* tbl, struct position* pos, const move m) {
         const bitboard to_bb   = SQR_BB(to);
         const bitboard move_bb = from_bb | to_bb;
 
-        if(!(us[IDX_ALL] & from_bb)) {
-            printf("\n");
-            pos_print(pos);
-            uciprint_mv(m, true);
-
-            fflush(stdout);
-        }
-
         assert(us[IDX_ALL] & from_bb);
         assert(!(us[IDX_ALL] & to_bb));
 
@@ -125,7 +117,7 @@ void move_make(const struct atts_tbl* tbl, struct position* pos, const move m) {
         else 
             ++(pos->hmoves);
         
-        pos->en_passant_target = code == MCODE_DBL_PUSH ? (*turn ? to - 8 : to + 8) : 0;
+        pos->en_passant_target = code == MCODE_DBL_PUSH ? (u8)(*turn ? to - 8 : to + 8) : 0;
 
         if(MCODE_ISCASTLE(code) || moved_type == TYPE_KING)
             pos->castle_k[*turn] = pos->castle_q[*turn] = false;

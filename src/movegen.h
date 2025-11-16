@@ -15,6 +15,8 @@ bitboard gen_katts(const u32);
 
 bitboard gen_rmask(const u32, const bool);
 
+struct ttbl;
+
 struct atts_tbl {
     // attack bitboard tables
     bitboard patts[2][64], ppush[2][64], dpush[2][64], dpush_check[2][64];
@@ -29,6 +31,8 @@ struct atts_tbl {
 
     bitboard between_bb[64][64];
     bitboard through_bb[64][64];
+
+    struct ttbl* ttbl;
 };
 
 struct atts_tbl gen_atts_tbl();
@@ -45,6 +49,13 @@ bitboard pmoves_dpush_bb(const struct atts_tbl*, const u32, const bitboard, cons
 bitboard pmoves_cap_bb(const struct atts_tbl*, const u32, const bitboard, const bool);
 bitboard pmoves_ep_bb(const struct atts_tbl*, const u32, const u32, const bool);
 
+
+enum gentype {
+    GENTYPE_QUIET,
+    GENTYPE_CAPS,
+    GENTYPE_ALL,
+};
+
 void genmoves_legal(
         const struct atts_tbl*,
         struct move_stack*,
@@ -53,7 +64,8 @@ void genmoves_legal(
         const bool,
         const u32,
         const bitboard,
-        const bitboard[2][7]);
+        const bitboard[2][7],
+        const u32);
 
 
 #endif

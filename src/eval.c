@@ -95,11 +95,11 @@ i32 eval(const struct atts_tbl* atts_tbl, const struct position* pos) {
 
     i32 v = 0;
 
-    for(i32 i = 0; i <= IDX_KING; ++i) {
+    for(i32 i = 0; i < 6; ++i) {
         bitboard bb = pos->bbs[TURN_W][i];
 
         for(; bb; bb = POP_LSB(bb)) {
-            u32 s = TZCNT(bb);
+            u32 s = 63 - TZCNT(bb);
 
             v += baseval[i] + tbl[i][s];
         }
@@ -107,7 +107,7 @@ i32 eval(const struct atts_tbl* atts_tbl, const struct position* pos) {
         bb = pos->bbs[TURN_B][i];
 
         for(; bb; bb = POP_LSB(bb)) {
-            u32 s = 63 - TZCNT(bb);
+            u32 s = TZCNT(bb);
 
             v -= baseval[i] + tbl[i][s];
         }

@@ -2,7 +2,6 @@
 #define POSITION_H
 
 #include "types.h"
-#include "move.h"
 
 #define TURN_B false
 #define TURN_W true

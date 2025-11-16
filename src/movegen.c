@@ -36,7 +36,6 @@ static bitboard gen_ray(const u32 sqr, const bitboard blk, u32 dir) {
 }
 
 bitboard gen_satts(const u32 sqr, const bool bsp, const bitboard blk) {
-
     bitboard atts = 0;
 
     for(u32 dir = bsp ? NORTH_EAST : NORTH; dir <= (bsp ? SOUTH_WEST : WEST); ++dir)
@@ -195,7 +194,7 @@ struct atts_tbl gen_atts_tbl() {
             }
         } 
     }
-
+    
     return tbl;
 }
 
@@ -241,7 +240,7 @@ bitboard pmoves_ep_bb(const struct atts_tbl* tbl, const u32 sqr, const u32 targe
 
 
 
-static bitboard sqr_attrs_bb2(
+bitboard sqr_attrs_bb2(
         const struct atts_tbl*  tbl,
         const bitboard          all,
         const bitboard          bbs[2][7],
@@ -259,11 +258,6 @@ static bitboard sqr_attrs_bb2(
     return bb;
 }
 
-enum gentype {
-    GENTYPE_QUIET,
-    GENTYPE_CAPS,
-    GENTYPE_ALL,
-};
 
 static void push_movebb(
         struct move_stack*  ms,
@@ -318,14 +312,9 @@ static void push_eep(
         const bitboard          us_pc,
         const u32               ksqr,
         const u32               ep_target,
-        const bool              turn,
-        const u32               gentype)
+        const bool              turn)
 {
     static const bitboard ep_mask[2] = {RANK_4, RANK_5};
-
-    const bool caps = gentype == GENTYPE_CAPS  || gentype == GENTYPE_ALL;
-    if(!caps)
-        return;
 
     bitboard bb = us_pc & ep_mask[turn] & tbl->patts[!turn][ep_target];
 
@@ -519,7 +508,8 @@ void push_all(
         const bool              turn,
         const bitboard          target,
         const bitboard          mask,
-        const bool              pinned)
+        const bool              pinned,
+        const u32               gentype)
 {
     const bitboard all_opps = opps[IDX_ALL];
     const bitboard all_us   = us[IDX_ALL];
@@ -530,12 +520,12 @@ void push_all(
     const bitboard us_rook  = us[IDX_ROOK];
     const bitboard us_queen = us[IDX_QUEEN];
 
-    push_sn(ms, tbl, all, all_us, all_opps, ksqr, target, us_night & mask, pinned, GENTYPE_ALL, NULL, nmoves_bb);
-    push_sn(ms, tbl, all, all_us, all_opps, ksqr, target, us_bishp & mask, pinned, GENTYPE_ALL, bmoves_bb, NULL);
-    push_sn(ms, tbl, all, all_us, all_opps, ksqr, target, us_rook  & mask, pinned, GENTYPE_ALL, rmoves_bb, NULL);
-    push_sn(ms, tbl, all, all_us, all_opps, ksqr, target, us_queen & mask, pinned, GENTYPE_ALL, qmoves_bb, NULL);
+    push_sn(ms, tbl, all, all_us, all_opps, ksqr, target, us_queen & mask, pinned, gentype, qmoves_bb, NULL);
+    push_sn(ms, tbl, all, all_us, all_opps, ksqr, target, us_rook  & mask, pinned, gentype, rmoves_bb, NULL);
+    push_sn(ms, tbl, all, all_us, all_opps, ksqr, target, us_bishp & mask, pinned, gentype, bmoves_bb, NULL);
+    push_sn(ms, tbl, all, all_us, all_opps, ksqr, target, us_night & mask, pinned, gentype, NULL, nmoves_bb);
 
-    push_p(ms, tbl, all, all_opps, ksqr, target, us_pawn & mask, pinned, turn, GENTYPE_ALL);
+    push_p(ms, tbl, all, all_opps, ksqr, target, us_pawn & mask, pinned, turn, gentype);
 }
 
 void genmoves_legal(
@@ -546,7 +536,8 @@ void genmoves_legal(
         const bool              castle_q,
         const u32               ep_target,
         const bitboard          all,
-        const bitboard          bbs[2][7]) 
+        const bitboard          bbs[2][7],
+        const u32               gentype)
 {
     const bitboard* us   = bbs[turn];
     const bitboard* opps = bbs[!turn];
@@ -556,7 +547,7 @@ void genmoves_legal(
     const bitboard checkers = sqr_attrs_bb2(tbl, all, bbs, ksqr, !turn);
     const bitboard pinmask  = get_pinmask(tbl, all, us[IDX_ALL], opps, ksqr);
 
-    push_k(ms, tbl, all, bbs, turn, ksqr, GENTYPE_ALL);
+    push_k(ms, tbl, all, bbs, turn, ksqr, gentype);
 
     if(checkers) {
         if POP_LSB(checkers)
@@ -564,21 +555,25 @@ void genmoves_legal(
 
         const bitboard blk = checkers | tbl->between_bb[ksqr][TZCNT(checkers)];
 
-        push_all(ms, tbl, all, us, opps, ksqr, turn, blk, ~pinmask, false);
+        push_all(ms, tbl, all, us, opps, ksqr, turn, blk, ~pinmask, false, gentype);
 
-        push_eep(ms, tbl, all, opps, us[IDX_PAWN], ksqr, ep_target, turn, GENTYPE_ALL);
+        if(gentype != GENTYPE_QUIET)
+            push_eep(ms, tbl, all, opps, us[IDX_PAWN], ksqr, ep_target, turn);
 
         return;
     }
 
-    push_all(ms, tbl, all, us, opps, ksqr, turn, pinmask,  pinmask, true);
-    push_all(ms, tbl, all, us, opps, ksqr, turn, 0,       ~pinmask, false);
+    push_all(ms, tbl, all, us, opps, ksqr, turn, pinmask,  pinmask, true,  gentype);
+    push_all(ms, tbl, all, us, opps, ksqr, turn, 0,       ~pinmask, false, gentype);
 
-    push_eep(ms, tbl, all, opps, us[IDX_PAWN], ksqr, ep_target, turn, GENTYPE_ALL);
+    if(gentype != GENTYPE_QUIET)
+        push_eep(ms, tbl, all, opps, us[IDX_PAWN], ksqr, ep_target, turn);
 
-    if(castle_k)
-        push_c(ms, tbl, all, bbs, ksqr, turn, false);
+    if(gentype != GENTYPE_CAPS) {
+        if(castle_k)
+            push_c(ms, tbl, all, bbs, ksqr, turn, false);
 
-    if(castle_q)
-        push_c(ms, tbl, all, bbs, ksqr, turn, true);
+        if(castle_q)
+            push_c(ms, tbl, all, bbs, ksqr, turn, true);
+    }
 }

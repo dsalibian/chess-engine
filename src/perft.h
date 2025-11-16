@@ -3,6 +3,6 @@
 
 #include "types.h"
 
-void perft(const char*, u32);
+void perft(const char*, const u32);
 
 #endif
